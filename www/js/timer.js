@@ -17,6 +17,7 @@
   let timerId = null;
   let onTickCb = null, onCompleteCb = null;
   let onModeChangeCb = null;
+  let onStateChangeCb = null;
 
   const RING_LEN = 2 * Math.PI * 128;
 
@@ -149,9 +150,9 @@
     if(onModeChangeCb) onModeChangeCb(mode);
   }
 
-  function start(){ if(running) return; running = true; setBtnIcon(true); timerId = setInterval(tick, 1000); }
-  function pause(){ if(!running) return; running = false; setBtnIcon(false); clearInterval(timerId); }
-  function stop(){ running = false; setBtnIcon(false); clearInterval(timerId); }
+  function start(){ if(running) return; running = true; setBtnIcon(true); timerId = setInterval(tick, 1000); if(onStateChangeCb) onStateChangeCb(running, mode, (mode==='focus'?focusMin:(mode==='break'?breakMin:longBreakMin))); }
+  function pause(){ if(!running) return; running = false; setBtnIcon(false); clearInterval(timerId); if(onStateChangeCb) onStateChangeCb(running, mode, (mode==='focus'?focusMin:(mode==='break'?breakMin:longBreakMin))); }
+  function stop(){ running = false; setBtnIcon(false); clearInterval(timerId); if(onStateChangeCb) onStateChangeCb(running, mode, (mode==='focus'?focusMin:(mode==='break'?breakMin:longBreakMin))); }
   function reset(){
     pause();
     mode = 'focus';
@@ -159,6 +160,7 @@
     currentRound = 0;
     paint();
     if(onModeChangeCb) onModeChangeCb(mode);
+    if(onStateChangeCb) onStateChangeCb(running, mode, focusMin);
   }
   function skip(){ remaining = 1; tick(); }
 
@@ -189,6 +191,7 @@
     onTick(cb){ onTickCb = cb; },
     onComplete(cb){ onCompleteCb = cb; },
     onModeChange(cb){ onModeChangeCb = cb; },
+    onStateChange(cb){ onStateChangeCb = cb; },
     paint
   };
 

@@ -36,20 +36,43 @@
       if(window.Capacitor && window.Capacitor.Plugins
         && window.Capacitor.Plugins.LocalNotifications){
         const LN = window.Capacitor.Plugins.LocalNotifications;
+        // 先请求权限
         if(LN.requestPermissions){
           try {
             const r = await LN.requestPermissions();
-            if(r && r.display === 'granted') return 'granted';
-          } catch(_){}
+            if(r && (r.display === 'granted' || r.notification === 'granted')) {
+              // 创建一个通知通道（Android 需要）
+              try {
+                if(LN.createChannel){
+                  await LN.createChannel({
+                    id: 'focus-reminders',
+                    name: '专注提醒',
+                    description: '任务到点提醒',
+                    importance: 4,
+                    visibility: 1,
+                    sound: 'default'
+                  });
+                }
+              } catch(_){}
+              return 'granted';
+            }
+          } catch(e){
+            console.warn('LocalNotifications.requestPermissions failed:', e);
+          }
         }
+        // 检查当前权限
         if(LN.checkPermissions){
           try {
             const p = await LN.checkPermissions();
-            if(p && p.display === 'granted') return 'granted';
+            if(p && (p.display === 'granted' || p.notification === 'granted')) {
+              return 'granted';
+            }
           } catch(_){}
         }
       }
-    } catch(_){}
+    } catch(e){
+      console.warn('Capacitor LocalNotifications not available:', e);
+    }
     // 2) 浏览器 Notification API
     if(typeof Notification !== 'undefined'){
       if(Notification.permission === 'granted') return 'granted';
@@ -63,6 +86,32 @@
   }
 
   function getPermissionStatus(){
+    // Capacitor 优先
+    if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications){
+      const LN = window.Capacitor.Plugins.LocalNotifications;
+      if(LN.checkPermissions){
+        try {
+          // 同步返回 Promise，但我们简化返回浏览器状态作为兜底
+          // 实际异步检查会在 requestPermission 中处理
+        } catch(_){}
+      }
+    }
+    if(typeof Notification !== 'undefined') return Notification.permission;
+    return 'default';
+  }
+
+  /* 异步获取权限状态（原生支持） */
+  async function getPermissionStatusAsync(){
+    try {
+      if(window.Capacitor && window.Capacitor.Plugins
+        && window.Capacitor.Plugins.LocalNotifications){
+        const LN = window.Capacitor.Plugins.LocalNotifications;
+        if(LN.checkPermissions){
+          const p = await LN.checkPermissions();
+          return p && (p.display || p.notification) || 'default';
+        }
+      }
+    } catch(_){}
     if(typeof Notification !== 'undefined') return Notification.permission;
     return 'default';
   }
@@ -246,6 +295,7 @@
     },
     requestPermission,
     getPermissionStatus,
+    getPermissionStatusAsync,
     setEnabled,
     isEnabled,
     setBefore,

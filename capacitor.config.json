@@ -18,9 +18,23 @@
     "preferredStatusBarStyle": "DEFAULT",
     "webContentsDebuggingEnabled": false
   },
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
   "plugins": {
     "StatusBar": {
       "style": "DEFAULT",
+      "backgroundColor": "#f5f3ee"
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon",
+      "iconColor": "66CCFF",
+      "sound": "default"
+    },
+    "SplashScreen": {
+      "launchShowDuration": 1000,
       "backgroundColor": "#f5f3ee"
     }
   }

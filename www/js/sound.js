@@ -1,13 +1,11 @@
-/* ===== 专心通 / Focus Master · 白噪音引擎 v2
+/* ===== 专心通 / Focus Master · 白噪音引擎 v3
    程序化生成自然声音，无需外部音频文件。
-   修复 iOS/移动端音频播放问题（全面加强版）：
-   1. 首次用户交互时解锁 AudioContext（多种事件：touchstart/click/pointerdown）
-   2. 确保 resume() 在用户手势内同步调用，失败时重试
-   3. Capacitor 环境下使用原生解锁
-   4. 每次播放前强制检查并恢复 context
-   5. 页面恢复/前后台切换时自动恢复 AudioContext
-   6. 处理 iOS Safari 静音开关 / 媒体会话 API ===== */
-
+   v3 彻底修复 iOS/移动端音频播放问题：
+   1. 使用 HTML5 <audio> 元素引导音频会话（iOS 上最可靠的方式）
+   2. 配合原生 AVAudioSession playback 模式绕过静音开关
+   3. Web Audio API 生成实际白噪音
+   4. 多事件解锁 + 失败重试 + 前后台自动恢复
+*/
 (function(){
   const SOUND_DEFS = [
     { id:'rain',   nameKey:'rain',   kanjiKey:'rainKj' },
@@ -27,6 +25,9 @@
     noise:'<path d="M4 12h2M8 8v8M12 5v14M16 8v8M20 12h-2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>'
   };
 
+  // 极短的无声 WAV 文件 base64（44 字节 WAV 头 + 1 采样），用于引导音频会话
+  const SILENCE_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+
   let ctx = null;
   let master = null;
   let volume = 0.6;
@@ -34,6 +35,30 @@
   let onStateChange = null;
   let unlocked = false;
   let unlockAttempts = 0;
+  let audioEl = null; // HTML5 audio 元素，用于引导 iOS 音频会话
+
+  /* —— 创建 HTML5 audio 元素引导音频会话 —— */
+  function ensureAudioElement(){
+    if(audioEl) return audioEl;
+    try {
+      audioEl = document.createElement('audio');
+      audioEl.src = SILENCE_WAV;
+      audioEl.loop = true;
+      audioEl.muted = false;
+      audioEl.volume = 0;
+      audioEl.setAttribute('playsinline', '');
+      audioEl.setAttribute('webkit-playsinline', '');
+      audioEl.setAttribute('preload', 'auto');
+      audioEl.style.position = 'absolute';
+      audioEl.style.width = '0';
+      audioEl.style.height = '0';
+      audioEl.style.pointerEvents = 'none';
+      document.body.appendChild(audioEl);
+    } catch(e){
+      audioEl = null;
+    }
+    return audioEl;
+  }
 
   /* —— 创建/恢复 AudioContext，带重试 —— */
   function ensureCtx(){
@@ -57,12 +82,10 @@
     if(!ctx) return false;
     if(ctx.state === 'running') return true;
     try {
-      // 同步调用一次
       if(typeof ctx.resume === 'function'){
         const p = ctx.resume();
         if(p && typeof p.catch === 'function'){
           p.catch(()=>{
-            // 失败后 100ms 再试一次
             setTimeout(()=>{
               try{ ctx.resume && ctx.resume().catch(()=>{}); }catch(_){}
             }, 100);
@@ -75,12 +98,33 @@
     }
   }
 
-  /* —— iOS 音频解锁：静音 buffer + 小音量振荡器双保险 —— */
+  /* —— 启动 HTML5 audio 引导元素（循环播放静音）—— */
+  function startGuideAudio(){
+    if(!audioEl) return false;
+    try {
+      // iOS: 必须在用户手势内 play()
+      const p = audioEl.play();
+      if(p && typeof p.then === 'function'){
+        p.then(()=>{}).catch(()=>{
+          // 失败时不抛错，下次交互再试
+        });
+      }
+      return true;
+    } catch(e){
+      return false;
+    }
+  }
+
+  /* —— iOS 音频彻底解锁：HTML5 audio 引导 + Web Audio 静音 buffer —— */
   function unlockAudio(){
     if(unlocked) return;
     if(!ensureCtx()) return;
+    ensureAudioElement();
     try {
-      // 1) 静音 buffer 法
+      // 1) 启动 HTML5 audio 引导元素（最重要的一步：占领 iOS 音频会话）
+      startGuideAudio();
+
+      // 2) 静音 buffer 法（Web Audio）
       const buffer = ctx.createBuffer(1, 1, ctx.sampleRate || 44100);
       const source = ctx.createBufferSource();
       source.buffer = buffer;
@@ -89,14 +133,14 @@
       source.connect(g); g.connect(master);
       try { source.start(0); source.stop(0.01); } catch(_){}
 
-      // 2) 0 音量振荡器（某些 iOS 版本需要实际的 AudioNode）
+      // 3) 0 音量振荡器
       const o = ctx.createOscillator();
       const og = ctx.createGain();
       og.gain.value = 0;
       o.connect(og); og.connect(master);
       try { o.start(0); o.stop(0.01); } catch(_){}
 
-      // 3) 强制 resume
+      // 4) 强制 resume
       forceResume();
 
       unlocked = true;
@@ -104,13 +148,17 @@
     } catch(e){}
   }
 
-  /* —— 全局触摸解锁监听（多个事件，多次尝试）—— */
+  /* —— 全局触摸解锁监听 —— */
   function setupUnlock(){
     const doUnlock = () => {
       unlockAudio();
-      if(!unlocked && unlockAttempts < 3){
-        // 如果没成功，再尝试一次（某些 iOS 需要更多时间）
+      if(!unlocked && unlockAttempts < 5){
         setTimeout(unlockAudio, 50);
+        setTimeout(unlockAudio, 200);
+      }
+      // 无论 Web Audio 是否解锁，都启动 HTML5 audio 引导
+      if(audioEl && audioEl.paused){
+        startGuideAudio();
       }
     };
     const events = ['touchstart', 'pointerdown', 'click', 'keydown'];
@@ -122,16 +170,9 @@
     };
     const handler = (e) => {
       doUnlock();
-      // Capacitor iOS: 尝试原生音频解锁
-      try {
-        if(window.Capacitor && window.Capacitor.Plugins){
-          const Pl = window.Capacitor.Plugins;
-          if(Pl.LocalNotifications){ /* noop */ }
-        }
-      } catch(_){}
-      // 第一次成功后再移除，但保留 click 以防后续操作继续需要
+      // 第一次成功后保留监听 2 秒（保险起见）
       if(unlocked){
-        setTimeout(remove, 1000);
+        setTimeout(remove, 2000);
       }
     };
     events.forEach(ev => {
@@ -143,20 +184,13 @@
 
   /* —— 页面可见性变化：恢复播放 + 恢复 context —— */
   document.addEventListener('visibilitychange', () => {
-    if(!ctx) return;
     if(document.visibilityState === 'visible'){
-      // 回到前台：强制 resume，并恢复播放中的声音
+      // 回到前台：重新启动引导音频 + resume context
+      startGuideAudio();
       forceResume();
-      if(current && current.id){
-        try {
-          if(master) master.gain.value = volume;
-        } catch(_){}
-        // 如果是在 Capacitor 内，重新 resume 上下文
-        setTimeout(forceResume, 200);
-      }
-    } else {
-      // 后台：在 iOS/Safari 可能会被挂起，不需要暂停；但把 gain 降低防止回来爆音
-      if(master){
+      setTimeout(forceResume, 200);
+      setTimeout(forceResume, 500);
+      if(current && current.id && master){
         try { master.gain.value = volume; } catch(_){}
       }
     }
@@ -168,8 +202,10 @@
       window.Capacitor.Plugins.App.addListener &&
         window.Capacitor.Plugins.App.addListener('appStateChange', (state)=>{
           if(state && state.isActive){
+            startGuideAudio();
             forceResume();
             setTimeout(forceResume, 300);
+            setTimeout(startGuideAudio, 300);
           }
         });
     }
@@ -350,6 +386,8 @@
   function chime(){
     if(!ensureCtx()) return;
     forceResume();
+    // HTML5 audio 引导也确保启动
+    if(audioEl && audioEl.paused) startGuideAudio();
     try {
       const notes = [880, 1108.73, 1318.51];
       notes.forEach((f, i)=>{
@@ -373,16 +411,18 @@
     isPlaying(id){ return current && current.id === id; },
     currentId(){ return current ? current.id : null; },
     async toggle(id){
-      // 每次点击都确保解锁 + resume
+      // 每次点击都确保：1) HTML5 audio 引导 2) Web Audio 解锁 3) resume
+      ensureAudioElement();
+      startGuideAudio();
       unlockAudio();
       if(!ensureCtx()) return;
       forceResume();
-      // 再次确保 resume（iOS 有时第一次 resume 不生效）
       if(ctx.state === 'suspended'){
         try { await ctx.resume(); } catch(e){}
         setTimeout(forceResume, 150);
+        setTimeout(startGuideAudio, 150);
       }
-      // iPad/iOS Safari 静音模式绕过：尝试设置一次主音量
+      // 设置主音量
       try {
         if(master){
           master.gain.setValueAtTime(volume, ctx.currentTime);

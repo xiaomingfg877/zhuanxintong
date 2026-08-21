@@ -1,12 +1,27 @@
-# 专心通 iOS 打包指南（免费版）
+# 专心通 iOS / Android 打包指南（免费版）
 
-本指南教你如何在 **Windows 电脑**上，不花一分钱，把「专心通」打包成真正的 iOS 应用（.ipa），安装到你的 iPhone / iPad 上。
+本指南教你如何在 **Windows 电脑**上，不花一分钱，把「专心通」打包成真正的 iOS 应用（.ipa）和 Android 应用（.apk），安装到你的 iPhone / iPad / Android 手机上。
 
 ## 整体流程
 
+### iOS：
 ```
 代码 → GitHub Actions（Mac 云编译）→ .ipa 文件 → SideStore 签名 → 装入 iPhone
 ```
+
+### Android：
+```
+代码 → GitHub Actions（Ubuntu 云编译）→ .apk 文件 → 直接安装到 Android 手机
+```
+
+| 步骤 | 工具 | 费用 |
+|------|------|------|
+| 1. 推代码到 GitHub | Git + GitHub | 免费 |
+| 2. 云端编译 .ipa / .apk | GitHub Actions | 免费（每月 2000 分钟） |
+| 3. 下载 .ipa / .apk | 浏览器 | 免费 |
+| 4. 签名安装到手机 | iOS: SideStore + 免费 Apple ID / Android: 直接安装 | 免费 |
+
+**注意**：免费 Apple ID 签名的 iOS App 有效期为 7 天，到期后需用 SideStore 重新签名。Android 的 APK 可以直接安装，无时间限制。
 
 | 步骤 | 工具 | 费用 |
 |------|------|------|

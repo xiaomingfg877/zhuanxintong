@@ -17,7 +17,7 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.2</string>
+	<string>2.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
 	<key>LSRequiresIPhoneOS</key>
@@ -46,8 +46,22 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
+		<string>remote-notification</string>
+		<string>fetch</string>
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>专心通需要通知权限以在任务到点时提醒你专注事项。</string>
+	<key>NSFamilyControlsUsageDescription</key>
+	<string>专心通需要屏幕使用时间权限以启用锁机功能，防止你专注时被其他软件打扰。</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>专心通不需要麦克风，此权限仅为系统兼容性声明。</string>
+	<key>UIRequiresFullScreen</key>
+	<false/>
+	<key>AVAudioSessionCategory</key>
+	<string>AVAudioSessionCategoryPlayback</string>
+	<key>AVAudioSessionCategoryOptions</key>
+	<integer>1</integer>
 </dict>
 </plist>

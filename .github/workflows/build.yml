@@ -1,4 +1,4 @@
-name: Build iOS IPA
+name: Build iOS & Android
 
 on:
   push:
@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    name: Build iOS App
+  build-ios:
+    name: Build iOS IPA
     runs-on: macos-latest
 
     steps:
@@ -77,4 +77,79 @@ jobs:
         with:
           name: zhuanxintong-ios
           path: zhuanxintong.ipa
+          retention-days: 30
+
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-33 build-tools;33.0.2'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Generate app icon from SVG
+        run: node generate-icon.js
+
+      - name: Sync www directory
+        run: |
+          # 确保 www 目录是最新
+          cp -f index.html www/index.html
+          cp -f css/style.css www/css/style.css
+          cp -f js/*.js www/js/
+
+      - name: Add Android platform
+        run: |
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
+          npx cap sync android
+          npx cap copy android
+
+      - name: Grant execute permission for gradlew
+        working-directory: android
+        run: chmod +x ./gradlew
+
+      - name: Build Debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon -Pandroid.useAndroidX=true
+
+      - name: Find and Upload APK
+        run: |
+          echo "=== Searching for APK ==="
+          APK_PATH=$(find android -name "*.apk" -type f 2>/dev/null | head -1)
+          
+          if [ -z "$APK_PATH" ]; then
+            echo "ERROR: Could not find APK"
+            find android -name "*.apk" 2>/dev/null
+            exit 1
+          fi
+          
+          echo "Found APK at: $APK_PATH"
+          cp "$APK_PATH" zhuanxintong.apk
+          ls -la zhuanxintong.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: zhuanxintong-android
+          path: zhuanxintong.apk
           retention-days: 30

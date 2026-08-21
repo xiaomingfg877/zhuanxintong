@@ -459,6 +459,13 @@
   // —— 通知权限请求按钮（设置中）——
   const btnReqN = $('btnRequestNotify');
   if(btnReqN){
+    // 初始化时显示当前权限状态
+    if(window.Schedule && Schedule.getPermissionStatusAsync){
+      Schedule.getPermissionStatusAsync().then(p=>{
+        if(p === 'granted') btnReqN.textContent = I18n.t('notifyPermGranted');
+        else if(p === 'denied') btnReqN.textContent = I18n.t('notifyPermDenied');
+      });
+    }
     btnReqN.addEventListener('click', async ()=>{
       if(window.Schedule){
         const r = await Schedule.requestPermission();
@@ -473,6 +480,60 @@
   // —— 花园初始化 ——
   if(window.Garden){
     Garden.render();
+  }
+
+  // —— 锁机功能初始化 ——
+  if(window.AppLocker){
+    // 初始化
+    AppLocker.init();
+    // 加载锁机配置
+    const scheduled = AppLocker.getScheduled();
+    $('cfgLocker').checked = AppLocker.isEnabled();
+    $('cfgLockerInFocus').checked = AppLocker.isLockInFocus();
+    $('cfgLockerDuration').value = AppLocker.getDefaultDuration();
+    $('cfgLockerScheduled').checked = scheduled.enabled;
+    $('cfgLockerTime').value = scheduled.time || '22:00';
+    const schedRow = $('lockerScheduledRow');
+    if(schedRow) schedRow.style.display = scheduled.enabled ? '' : 'none';
+    // 绑定开关
+    $('cfgLocker').addEventListener('change', ()=>{
+      AppLocker.setEnabled($('cfgLocker').checked);
+    });
+    $('cfgLockerInFocus').addEventListener('change', ()=>{
+      AppLocker.setLockInFocus($('cfgLockerInFocus').checked);
+    });
+    $('cfgLockerDuration').addEventListener('change', ()=>{
+      const v = Math.max(1, Math.min(480, +$('cfgLockerDuration').value || 25));
+      $('cfgLockerDuration').value = v;
+      AppLocker.setDefaultDuration(v);
+    });
+    $('cfgLockerScheduled').addEventListener('change', ()=>{
+      const en = $('cfgLockerScheduled').checked;
+      const time = $('cfgLockerTime').value || '22:00';
+      AppLocker.setScheduled(time, en);
+      if(schedRow) schedRow.style.display = en ? '' : 'none';
+    });
+    $('cfgLockerTime').addEventListener('change', ()=>{
+      const en = $('cfgLockerScheduled').checked;
+      const time = $('cfgLockerTime').value || '22:00';
+      AppLocker.setScheduled(time, en);
+    });
+    const btnGuide = $('btnLockerGuide');
+    if(btnGuide){
+      btnGuide.addEventListener('click', ()=>{
+        AppLocker.guideToSystemSettings();
+      });
+    }
+    const btnTest = $('btnTestLocker');
+    if(btnTest){
+      btnTest.addEventListener('click', ()=>{
+        if(!AppLocker.isEnabled()){
+          alert(I18n.t('enableLocker'));
+          return;
+        }
+        AppLocker.lock(1); // 测试锁机 1 分钟
+      });
+    }
   }
 
   // —— 设置表单初始化 ——
