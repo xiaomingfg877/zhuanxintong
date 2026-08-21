@@ -229,15 +229,18 @@ body.break-mode .ring-fg{stroke:var(--bamboo);filter:drop-shadow(0 0 6px rgba(10
 .btn-circle svg{width:24px;height:24px;fill:var(--ink);}
 .btn-primary{
   width:70px;height:70px;
-  background:linear-gradient(145deg,#2c2c2e,#1c1c1e);
-  box-shadow:0 4px 16px rgba(28,28,30,.25), inset 0 1px 0 rgba(255,255,255,.1);
+  background:linear-gradient(145deg, var(--vermilion), #933a24);
+  backdrop-filter:var(--glass-blur);
+  -webkit-backdrop-filter:var(--glass-blur);
+  box-shadow:0 4px 20px rgba(181,72,46,.35), inset 0 1px 0 rgba(255,255,255,.15);
+  border:1px solid rgba(181,72,46,.3);
 }
 [data-theme-mode="dark"] .btn-primary{
-  background:linear-gradient(145deg,#e8e4dc,#c8c4bb);
-  box-shadow:0 4px 16px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.2);
+  background:linear-gradient(145deg, var(--vermilion-text), #8a3522);
+  box-shadow:0 4px 20px rgba(209,96,74,.4), inset 0 1px 0 rgba(255,255,255,.1);
 }
-.btn-primary svg{fill:#fff;width:28px;height:28px;}
-[data-theme-mode="dark"] .btn-primary svg{fill:#1c1c1e;}
+.btn-primary svg{fill:#fff;width:28px;height:28px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.2));}
+.btn-primary.paused svg{fill:#fff;}
 .btn-secondary{
   background:rgba(255,255,255,.6);
   backdrop-filter:var(--glass-blur);
@@ -890,6 +893,90 @@ input[type=number],input[type=text],input[type=time],textarea{border-radius:12px
   color:rgba(245,243,238,.6);
   border-color:rgba(245,243,238,.2);
 }
-.app-locker-overlay .locker-emergency:active{
-  transform:scale(.95);
+/* 锁机设置 - 定时时间段 */
+.locker-scheduled-row{
+  padding:8px 0 12px;
+  border-top:1px solid var(--line);
+}
+.locker-time-row{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  font-size:14px;color:var(--ink-soft);
+}
+.locker-time-row input[type=time]{
+  padding:8px 10px;border:1px solid var(--line-strong);border-radius:12px;
+  font-size:15px;color:var(--ink);
+  background:rgba(255,255,255,.5);outline:none;
+}
+[data-theme-mode="dark"] .locker-time-row input[type=time]{
+  background:rgba(40,38,34,.6);
+}
+.locker-time-row input[type=time]::-webkit-calendar-picker-indicator{
+  cursor:pointer;opacity:.6;
+}
+.locker-time-hint{
+  font-size:11px;color:var(--ink-mute);margin-top:6px;letter-spacing:.03em;
+}
+
+/* 锁机设置 - 应用选择 */
+.locker-apps-section{
+  border-top:1px solid var(--line);
+  padding:8px 0 4px;
+}
+.locker-apps-hint{
+  font-size:12px;color:var(--ink-soft);margin:4px 0 8px;letter-spacing:.03em;
+}
+.locker-app-list{
+  display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;
+  max-height:180px;overflow-y:auto;padding:4px 0;
+}
+.locker-app-item{
+  display:flex;align-items:center;gap:5px;
+  padding:6px 10px;border-radius:999px;
+  background:rgba(255,255,255,.4);
+  border:1px solid var(--line-strong);
+  font-size:12px;color:var(--ink-soft);
+  cursor:pointer;transition:all .15s;
+  user-select:none;
+}
+[data-theme-mode="dark"] .locker-app-item{
+  background:rgba(40,38,34,.4);
+}
+.locker-app-item:active{transform:scale(.95);}
+.locker-app-item.active{
+  background:var(--vermilion-soft);
+  border-color:rgba(181,72,46,.3);
+  color:var(--vermilion);
+  font-weight:500;
+}
+.locker-app-item .app-icon{font-size:14px;}
+.locker-app-item .app-del{
+  margin-left:2px;color:var(--ink-mute);font-size:14px;line-height:1;
+}
+.locker-app-item.active .app-del{color:var(--vermilion);}
+.locker-custom-row{
+  display:flex;gap:8px;align-items:center;margin-top:4px;
+}
+.locker-custom-row input[type=text]{
+  flex:1;padding:10px 12px;border:1px solid var(--line-strong);border-radius:12px;
+  background:rgba(255,255,255,.5);font-size:14px;color:var(--ink);outline:none;
+}
+[data-theme-mode="dark"] .locker-custom-row input[type=text]{
+  background:rgba(40,38,34,.6);
+}
+
+/* 锁机遮罩 - 应用列表展示 */
+.app-locker-overlay .locker-apps{
+  margin-bottom:24px;padding:10px 16px;border-radius:14px;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.08);
+  max-width:280px;
+}
+.app-locker-overlay .locker-apps-label{
+  display:block;font-size:11px;color:rgba(245,243,238,.5);
+  letter-spacing:.1em;margin-bottom:4px;
+}
+.app-locker-overlay .locker-apps-list{
+  display:block;font-size:13px;color:rgba(245,243,238,.75);
+  line-height:1.5;max-height:60px;overflow:hidden;
+  text-overflow:ellipsis;
 }

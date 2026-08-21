@@ -318,14 +318,36 @@
           <span data-i18n="lockDuration">默认锁定时长（分）</span>
           <input type="number" id="cfgLockerDuration" min="1" max="480" value="25" />
         </div>
+
+        <!-- 定时锁定 -->
         <div class="setting-row">
           <span data-i18n="scheduledLock">定时锁定</span>
           <label class="switch"><input type="checkbox" id="cfgLockerScheduled" /><span></span></label>
         </div>
-        <div class="setting-row" id="lockerScheduledRow" style="display:none;">
-          <span data-i18n="scheduledLockTime">锁定时间</span>
-          <input type="time" id="cfgLockerTime" value="22:00" />
+        <div class="locker-scheduled-row" id="lockerScheduledRow" style="display:none;">
+          <div class="locker-time-row">
+            <span data-i18n="scheduledLockStart">开始时间</span>
+            <input type="time" id="cfgLockerTime" value="22:00" />
+            <span data-i18n="scheduledLockEnd">结束</span>
+            <input type="time" id="cfgLockerEndTime" value="23:00" />
+          </div>
+          <p class="locker-time-hint" data-i18n="scheduledLockHint">留空结束时间则锁定默认时长</p>
         </div>
+
+        <!-- 选择锁定应用 -->
+        <div class="locker-apps-section">
+          <div class="setting-row">
+            <span data-i18n="lockAppSelection">选择锁定应用</span>
+            <label class="switch"><input type="checkbox" id="cfgLockerAllApps" checked /><span></span></label>
+          </div>
+          <p class="locker-apps-hint" id="lockerAppsHint" data-i18n="lockAllAppsHint">当前：锁定所有应用</p>
+          <div class="locker-app-list" id="lockerAppList" style="display:none;"></div>
+          <div class="locker-custom-row">
+            <input type="text" id="lockerCustomInput" maxlength="10" data-i18n-ph="lockCustomAppPh" placeholder="添加自定义应用…" />
+            <button class="btn-text" id="btnAddCustomApp" data-i18n="add">添加</button>
+          </div>
+        </div>
+
         <div class="setting-row">
           <button class="btn-text" id="btnLockerGuide" data-i18n="nativeLockGuide">前往系统设置</button>
         </div>

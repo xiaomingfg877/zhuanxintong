@@ -95,6 +95,11 @@
     Tasks.renderTagManager($('tagManager'));
     updateTimerHint();
     updateLangButtons(pref);
+    // 刷新锁机相关UI
+    if(window.AppLocker){
+      AppLocker.refreshAppList();
+      AppLocker.refreshOverlay();
+    }
   }
   function updateLangButtons(pref){
     document.querySelectorAll('.lang-btn').forEach(btn=>{
@@ -493,8 +498,66 @@
     $('cfgLockerDuration').value = AppLocker.getDefaultDuration();
     $('cfgLockerScheduled').checked = scheduled.enabled;
     $('cfgLockerTime').value = scheduled.time || '22:00';
+    $('cfgLockerEndTime').value = scheduled.endTime || '';
     const schedRow = $('lockerScheduledRow');
     if(schedRow) schedRow.style.display = scheduled.enabled ? '' : 'none';
+
+    // 锁定所有应用开关
+    const cfgAllApps = $('cfgLockerAllApps');
+    cfgAllApps.checked = AppLocker.isLockAllApps();
+    cfgAllApps.addEventListener('change', ()=>{
+      AppLocker.setLockAllApps(cfgAllApps.checked);
+      renderLockerAppList();
+      updateLockerAppsHint();
+    });
+
+    // 渲染应用列表
+    function renderLockerAppList(){
+      const list = $('lockerAppList');
+      if(!list) return;
+      AppLocker.refreshAppList();
+    }
+
+    // 使用事件委托处理应用列表点击
+    const lockerAppListEl = $('lockerAppList');
+    if(lockerAppListEl){
+      lockerAppListEl.addEventListener('click', (e)=>{
+        const del = e.target.closest('[data-del]');
+        if(del){
+          e.stopPropagation();
+          const id = del.dataset.del;
+          AppLocker.removeCustomApp(id);
+          renderLockerAppList();
+          return;
+        }
+        const item = e.target.closest('.locker-app-item');
+        if(!item) return;
+        const id = item.dataset.id;
+        const current = AppLocker.getLockedApps();
+        const idx = current.indexOf(id);
+        if(idx >= 0) current.splice(idx, 1);
+        else current.push(id);
+        AppLocker.setLockedApps(current);
+        renderLockerAppList();
+        updateLockerAppsHint();
+      });
+    }
+
+    function updateLockerAppsHint(){
+      const hint = $('lockerAppsHint');
+      if(!hint) return;
+      if(AppLocker.isLockAllApps()){
+        hint.textContent = I18n.t('lockAllAppsHint');
+      } else {
+        const n = AppLocker.getLockedApps().length;
+        hint.textContent = I18n.t('lockSelectedHint', {n: n});
+      }
+    }
+
+    // 初始渲染
+    renderLockerAppList();
+    updateLockerAppsHint();
+
     // 绑定开关
     $('cfgLocker').addEventListener('change', ()=>{
       AppLocker.setEnabled($('cfgLocker').checked);
@@ -510,14 +573,46 @@
     $('cfgLockerScheduled').addEventListener('change', ()=>{
       const en = $('cfgLockerScheduled').checked;
       const time = $('cfgLockerTime').value || '22:00';
-      AppLocker.setScheduled(time, en);
+      const endTime = $('cfgLockerEndTime').value || '';
+      AppLocker.setScheduled(time, endTime, en);
       if(schedRow) schedRow.style.display = en ? '' : 'none';
     });
     $('cfgLockerTime').addEventListener('change', ()=>{
       const en = $('cfgLockerScheduled').checked;
       const time = $('cfgLockerTime').value || '22:00';
-      AppLocker.setScheduled(time, en);
+      const endTime = $('cfgLockerEndTime').value || '';
+      AppLocker.setScheduled(time, endTime, en);
     });
+    $('cfgLockerEndTime').addEventListener('change', ()=>{
+      const en = $('cfgLockerScheduled').checked;
+      const time = $('cfgLockerTime').value || '22:00';
+      const endTime = $('cfgLockerEndTime').value || '';
+      AppLocker.setScheduled(time, endTime, en);
+    });
+
+    // 自定义应用添加
+    const customInput = $('lockerCustomInput');
+    const btnAddCustom = $('btnAddCustomApp');
+    if(btnAddCustom){
+      btnAddCustom.addEventListener('click', ()=>{
+        const name = (customInput?.value || '').trim();
+        if(!name) return;
+        const id = 'custom_' + Date.now();
+        AppLocker.addCustomApp({ id: id, nameZh: name, nameEn: name, icon: '📱' });
+        const current = AppLocker.getLockedApps();
+        current.push(id);
+        AppLocker.setLockedApps(current);
+        if(customInput) customInput.value = '';
+        renderLockerAppList();
+        updateLockerAppsHint();
+      });
+    }
+    if(customInput){
+      customInput.addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter') btnAddCustom?.click();
+      });
+    }
+
     const btnGuide = $('btnLockerGuide');
     if(btnGuide){
       btnGuide.addEventListener('click', ()=>{
