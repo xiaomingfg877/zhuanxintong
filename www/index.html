@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+  <title>专心通</title>
+  <meta name="description" content="极简专注学习与工作工具，让你安静下来。" />
+  <meta name="theme-color" content="#f5f3ee" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="专心通" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- 顶部标题 -->
+  <header class="app-header">
+    <h1 class="app-title">专心通</h1>
+    <p class="app-sub" id="appSub">静而后能安，安而后能虑</p>
+    <button class="btn-settings" id="btnSettings" aria-label="设置">
+      <svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0 6a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>
+    </button>
+  </header>
+
+  <!-- 主内容区 -->
+  <main class="app-main">
+
+    <!-- 视图一：专注计时 -->
+    <section class="view view-timer active" id="view-timer">
+      <div class="timer-wrap" id="timerTapArea">
+        <svg class="timer-ring" viewBox="0 0 280 280">
+          <circle class="ring-bg" cx="140" cy="140" r="128" />
+          <circle class="ring-fg" cx="140" cy="140" r="128" id="ringFg" />
+        </svg>
+        <div class="timer-center">
+          <span class="timer-mode" id="timerMode">专注</span>
+          <span class="timer-time" id="timerTime">25:00</span>
+          <span class="timer-task" id="timerTask">未选择任务</span>
+          <span class="timer-round" id="timerRound">番茄 0 / 4</span>
+        </div>
+      </div>
+
+      <div class="timer-actions">
+        <button class="btn-circle btn-secondary" id="btnReset" aria-label="重置">
+          <svg viewBox="0 0 24 24"><path d="M12 5V2L8 6l4 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg>
+        </button>
+        <button class="btn-circle btn-primary" id="btnToggle" aria-label="开始">
+          <svg viewBox="0 0 24 24" id="iconPlay"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <button class="btn-circle btn-secondary" id="btnSkip" aria-label="跳过">
+          <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+        </button>
+      </div>
+
+      <div class="timer-presets" id="timerPresets">
+        <button class="preset active" data-focus="25" data-break="5">专注25 · 休息5</button>
+        <button class="preset" data-focus="50" data-break="10">专注50 · 休息10</button>
+        <button class="preset" data-focus="15" data-break="3">专注15 · 休息3</button>
+        <button class="preset" data-focus="90" data-break="20">专注90 · 休息20</button>
+      </div>
+
+      <div class="timer-custom">
+        <span class="custom-label">自定义</span>
+        <input type="number" id="customFocus" min="1" max="180" value="25" />
+        <span class="custom-sep">·</span>
+        <input type="number" id="customBreak" min="1" max="60" value="5" />
+        <span class="custom-unit">分</span>
+        <button class="btn-text" id="btnCustom">应用</button>
+      </div>
+
+      <p class="timer-hint" id="timerHint">点中间的圆开始专注，双击进入沉浸</p>
+    </section>
+
+    <!-- 视图二：白噪音 -->
+    <section class="view view-sound" id="view-sound">
+      <p class="view-intro">选一种声音，让心沉下来。</p>
+      <div class="sound-grid" id="soundGrid"></div>
+      <div class="sound-volume" id="soundVolume" hidden>
+        <span class="vol-label">音量</span>
+        <input type="range" id="volSlider" min="0" max="100" value="60" />
+        <span class="vol-val" id="volVal">60</span>
+      </div>
+    </section>
+
+    <!-- 视图三：任务清单 -->
+    <section class="view view-tasks" id="view-tasks">
+      <form class="task-add" id="taskAdd">
+        <input type="text" id="taskInput" placeholder="写下要做的事…" maxlength="60" />
+        <button type="submit" class="btn-text">添加</button>
+      </form>
+      <ul class="task-list" id="taskList"></ul>
+      <p class="task-empty" id="taskEmpty">还没有任务，添一件小事开始吧。</p>
+    </section>
+
+    <!-- 视图四：专注统计 -->
+    <section class="view view-stats" id="view-stats">
+      <div class="stat-cards">
+        <div class="stat-card">
+          <span class="stat-num" id="todayMin">0</span>
+          <span class="stat-unit">分钟</span>
+          <span class="stat-cap">今日专注</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-num" id="weekMin">0</span>
+          <span class="stat-unit">分钟</span>
+          <span class="stat-cap">本周专注</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-num" id="totalPomo">0</span>
+          <span class="stat-unit">个</span>
+          <span class="stat-cap">累计番茄</span>
+        </div>
+      </div>
+      <h3 class="stats-section-title">近 12 周</h3>
+      <div class="heatmap" id="heatmap"></div>
+      <h3 class="stats-section-title">最近 7 天</h3>
+      <div class="bar-chart" id="barChart"></div>
+    </section>
+
+  </main>
+
+  <!-- 底部导航 -->
+  <nav class="app-nav">
+    <button class="nav-item active" data-view="timer">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+      <span>专注</span>
+    </button>
+    <button class="nav-item" data-view="sound">
+      <svg viewBox="0 0 24 24"><path d="M3 10v4h4l5 4V6L7 10H3z" fill="currentColor"/><path d="M16 8a5 5 0 0 1 0 8" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+      <span>声音</span>
+    </button>
+    <button class="nav-item" data-view="tasks">
+      <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <span>任务</span>
+    </button>
+    <button class="nav-item" data-view="stats">
+      <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-6M22 20H2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/></svg>
+      <span>统计</span>
+    </button>
+  </nav>
+
+  <!-- 设置抽屉 -->
+  <div class="drawer" id="drawer" hidden>
+    <div class="drawer-mask" id="drawerMask"></div>
+    <div class="drawer-panel">
+      <div class="drawer-head">
+        <h2>设置</h2>
+        <button class="drawer-close" id="drawerClose" aria-label="关闭">×</button>
+      </div>
+      <div class="drawer-body">
+        <div class="setting-group">
+          <h3>番茄循环</h3>
+          <div class="setting-row">
+            <span>启用番茄循环</span>
+            <label class="switch"><input type="checkbox" id="cfgLoop" checked /><span></span></label>
+          </div>
+          <div class="setting-row">
+            <span>长休息时长（分）</span>
+            <input type="number" id="cfgLongBreak" min="5" max="60" value="15" />
+          </div>
+          <div class="setting-row">
+            <span>循环轮数</span>
+            <input type="number" id="cfgRounds" min="2" max="10" value="4" />
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <h3>默认时长</h3>
+          <div class="setting-row">
+            <span>专注（分）</span>
+            <input type="number" id="cfgFocus" min="1" max="180" value="25" />
+          </div>
+          <div class="setting-row">
+            <span>短休息（分）</span>
+            <input type="number" id="cfgBreak" min="1" max="60" value="5" />
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <h3>声音</h3>
+          <div class="setting-row">
+            <span>默认音量</span>
+            <input type="range" id="cfgVol" min="0" max="100" value="60" />
+            <span class="vol-val" id="cfgVolVal">60</span>
+          </div>
+          <div class="setting-row">
+            <span>完成提示音</span>
+            <label class="switch"><input type="checkbox" id="cfgChime" checked /><span></span></label>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <h3>其他</h3>
+          <div class="setting-row">
+            <span>双击圆环进沉浸</span>
+            <label class="switch"><input type="checkbox" id="cfgImmersive" checked /><span></span></label>
+          </div>
+          <div class="setting-row">
+            <span>显示秒数</span>
+            <label class="switch"><input type="checkbox" id="cfgSeconds" checked /><span></span></label>
+          </div>
+          <div class="setting-row setting-row-link" id="cfgClear">
+            <span>清除所有数据</span>
+            <span class="danger">清除</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 全屏沉浸遮罩 -->
+  <div class="immersive" id="immersive" hidden>
+    <div class="immersive-inner">
+      <span class="immersive-time" id="immersiveTime">25:00</span>
+      <span class="immersive-task" id="immersiveTask">专注中</span>
+      <span class="immersive-round" id="immersiveRound">第 1 轮</span>
+      <button class="immersive-close" id="immersiveClose">退出沉浸</button>
+    </div>
+  </div>
+
+  <script src="js/sound.js"></script>
+  <script src="js/tasks.js"></script>
+  <script src="js/stats.js"></script>
+  <script src="js/timer.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

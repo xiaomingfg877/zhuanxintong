@@ -1,7 +1,5 @@
 node_modules/
-ios/
 android/
-www/
 build/
 *.log
 .DS_Store

@@ -1,7 +1,7 @@
 {
   "appId": "com.zhuanxintong.focus",
   "appName": "专心通",
-  "webDir": ".",
+  "webDir": "www",
   "server": {
     "android": {
       "buildOptions": {

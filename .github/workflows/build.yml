@@ -23,31 +23,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
-      - name: Install Capacitor
-        run: npm install
-
-      - name: Add iOS Platform
-        run: npx cap add ios
+      - name: Install dependencies
+        run: npm ci
 
       - name: Sync Web Files
-        run: |
-          # Copy all web assets into Capacitor www directory
-          mkdir -p www
-          cp index.html www/
-          cp manifest.json www/ 2>/dev/null || true
-          cp icon.svg www/ 2>/dev/null || true
-          cp sw.js www/ 2>/dev/null || true
-          cp -r css www/ 2>/dev/null || true
-          cp -r js www/ 2>/dev/null || true
-          npx cap sync ios
+        run: npx cap sync ios
 
-      - name: Configure Signing (Free/Manual)
+      - name: Install CocoaPods dependencies
+        working-directory: ios/App
+        run: pod install
+
+      - name: Build iOS (unsigned, for SideStore)
         run: |
-          # For free signing with SideStore, we build without code signing
           cd ios/App
-          # Set the build settings for unsigned build
           xcodebuild -workspace App.xcworkspace -scheme App \
             -configuration Debug \
             -sdk iphoneos \
@@ -57,7 +46,8 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_IDENTITY="" \
             DEVELOPMENT_TEAM="" \
-            build 2>&1 | tail -20
+            IPHONEOS_DEPLOYMENT_TARGET=15.0 \
+            build
 
       - name: Package IPA
         run: |
@@ -69,6 +59,7 @@ jobs:
             echo "IPA created successfully"
           else
             echo "ERROR: App.app not found. Check build output."
+            ls -la
             exit 1
           fi
 

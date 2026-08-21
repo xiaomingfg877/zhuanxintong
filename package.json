@@ -10,8 +10,8 @@
     "build:ios": "cap sync ios && cap copy ios"
   },
   "devDependencies": {
-    "@capacitor/cli": "^5.7.0",
-    "@capacitor/ios": "^5.7.0"
+    "@capacitor/cli": "^5.7.8",
+    "@capacitor/ios": "^5.7.8"
   },
   "capacitor": {
     "ios": {
