@@ -192,8 +192,12 @@
     lockOverlay.classList.add('active');
     // 阻止触摸事件穿透
     lockOverlay.style.pointerEvents = 'auto';
+    // iOS: 阻止所有触摸/手势事件
+    blockTouchEvents(true);
     // 进入全屏（如果支持）
     requestFullScreen();
+    // 锁定页面滚动
+    lockPageScroll(true);
     // 启动计时器
     startTimer();
     // 阻止返回按钮
@@ -216,6 +220,9 @@
       clearInterval(timerInterval);
       timerInterval = null;
     }
+    // 恢复触摸/手势
+    blockTouchEvents(false);
+    lockPageScroll(false);
     exitFullScreen();
     restoreBack();
     if(onLockChange) onLockChange(false, 0, forced);
@@ -243,14 +250,46 @@
 
   /* —— 请求全屏 —— */
   function requestFullScreen(){
+    const plat = platform();
+    if(plat === 'ios' || plat === 'android'){
+      // 原生平台：尝试使用 Capacitor 的全屏 API
+      try {
+        if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StatusBar){
+          // 隐藏状态栏，实现全屏效果
+          if(window.Capacitor.Plugins.StatusBar.hide){
+            window.Capacitor.Plugins.StatusBar.hide().catch(()=>{});
+          }
+          if(window.Capacitor.Plugins.StatusBar.setOverlaysWebView){
+            window.Capacitor.Plugins.StatusBar.setOverlaysWebView({ overlay: false }).catch(()=>{});
+          }
+        }
+      } catch(e){}
+      // iOS Safari: 不支持 Fullscreen API，跳过
+      if(plat === 'ios') return;
+    }
+    // Web/Android: 标准 Fullscreen API
     try {
       const el = document.documentElement;
-      if(el.requestFullscreen) el.requestFullscreen().catch(()=>{});
+      if(el.requestFullscreen){ el.requestFullscreen().catch(()=>{}); }
       else if(el.webkitRequestFullscreen) el.webkitRequestFullscreen();
       else if(el.webkitEnterFullscreen) el.webkitEnterFullscreen();
     } catch(e){}
   }
   function exitFullScreen(){
+    const plat = platform();
+    if(plat === 'ios' || plat === 'android'){
+      try {
+        if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StatusBar){
+          if(window.Capacitor.Plugins.StatusBar.show){
+            window.Capacitor.Plugins.StatusBar.show().catch(()=>{});
+          }
+          if(window.Capacitor.Plugins.StatusBar.setOverlaysWebView){
+            window.Capacitor.Plugins.StatusBar.setOverlaysWebView({ overlay: true }).catch(()=>{});
+          }
+        }
+      } catch(e){}
+      if(plat === 'ios') return;
+    }
     try {
       if(document.exitFullscreen && document.fullscreenElement){
         document.exitFullscreen().catch(()=>{});
@@ -260,27 +299,45 @@
     } catch(e){}
   }
 
-  /* —— 阻止/恢复返回按钮（Android Capacitor）—— */
+  /* —— 阻止/恢复返回按钮（Android Capacitor + iOS popstate）—— */
   function preventBack(){
     if(backButtonListenerActive) return; // 防止重复添加
+    // Android: Capacitor App 插件的 backButton 事件
     try {
       if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App){
         const App = window.Capacitor.Plugins.App;
         if(App.addListener){
           App.addListener('backButton', onBackButton);
-          backButtonListenerActive = true;
         }
       }
     } catch(e){}
+    // iOS/Web: 拦截浏览器后退（popstate）
+    window.addEventListener('popstate', onPopStateBlock);
+    // iOS: 拦截 history back
+    const plat = platform();
+    if(plat === 'ios'){
+      // iOS Capacitor: 使用 App 插件监听
+      try {
+        if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App){
+          window.Capacitor.Plugins.App.addListener('backButton', onBackButton).catch(()=>{});
+        }
+      } catch(e){}
+    }
+    backButtonListenerActive = true;
   }
   function onBackButton(){
     // 提示用户正在锁机中
     showExitHint();
   }
+  function onPopStateBlock(){
+    // 阻止浏览器后退：重新 pushState 保持当前历史
+    window.history.pushState(null, '', window.location.href);
+    showExitHint();
+  }
   function restoreBack(){
     if(!backButtonListenerActive) return;
     try {
-      // Capacitor App 插件使用 removeListener 移除
+      // Capacitor App 插件
       if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App){
         const App = window.Capacitor.Plugins.App;
         if(App.removeListener){
@@ -288,6 +345,7 @@
         }
       }
     } catch(e){}
+    window.removeEventListener('popstate', onPopStateBlock);
     backButtonListenerActive = false;
   }
   function showExitHint(){
@@ -301,6 +359,107 @@
           hint.classList.remove('warning');
         }
       }, 2500);
+    }
+  }
+
+  /* —— iOS/通用：阻止触摸和手势事件 —— */
+  let touchBlocked = false;
+  function blockTouchEvents(on){
+    if(on === touchBlocked) return;
+    touchBlocked = on;
+    if(on){
+      // 拦截所有触摸事件（防止 iOS 边缘滑动、下拉刷新、橡皮筋等）
+      document.addEventListener('touchstart', onTouchBlock, { passive: false });
+      document.addEventListener('touchmove', onTouchBlock, { passive: false });
+      document.addEventListener('touchend', onTouchBlock, { passive: false });
+      document.addEventListener('touchcancel', onTouchBlock, { passive: false });
+      // iOS 手势：捏合缩放、双击缩放
+      document.addEventListener('gesturestart', onGestureBlock, { passive: false });
+      document.addEventListener('gesturechange', onGestureBlock, { passive: false });
+      document.addEventListener('gestureend', onGestureBlock, { passive: false });
+      // iOS 阻止双击缩放
+      document.addEventListener('dblclick', onDblClickBlock, { passive: false });
+      // 阻止 context menu
+      document.addEventListener('contextmenu', preventDefault, { passive: false });
+      // 阻止键盘事件（音量键等可能触发系统操作）
+      document.addEventListener('keydown', onKeyDownBlock, { passive: false });
+    } else {
+      document.removeEventListener('touchstart', onTouchBlock);
+      document.removeEventListener('touchmove', onTouchBlock);
+      document.removeEventListener('touchend', onTouchBlock);
+      document.removeEventListener('touchcancel', onTouchBlock);
+      document.removeEventListener('gesturestart', onGestureBlock);
+      document.removeEventListener('gesturechange', onGestureBlock);
+      document.removeEventListener('gestureend', onGestureBlock);
+      document.removeEventListener('dblclick', onDblClickBlock);
+      document.removeEventListener('contextmenu', preventDefault);
+      document.removeEventListener('keydown', onKeyDownBlock);
+    }
+  }
+  function onTouchBlock(e){
+    // 如果触摸在紧急退出按钮上，允许通过
+    if(e.target && e.target.closest && e.target.closest('#lockerEmergency')){
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
+  }
+  function onGestureBlock(e){
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
+  }
+  function onDblClickBlock(e){
+    e.preventDefault();
+    return false;
+  }
+  function preventDefault(e){
+    e.preventDefault();
+    return false;
+  }
+  function onKeyDownBlock(e){
+    // 阻止 Escape、F11 等键
+    if(e.key === 'Escape' || e.key === 'F11' || e.key === 'Backspace'){
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    }
+  }
+
+  /* —— 锁定页面滚动（防止橡皮筋/下拉刷新）—— */
+  let scrollLocked = false;
+  let savedScrollY = 0;
+  function lockPageScroll(on){
+    if(on === scrollLocked) return;
+    scrollLocked = on;
+    if(on){
+      savedScrollY = window.scrollY || document.documentElement.scrollTop || 0;
+      // 固定 body 位置
+      const st = document.body.style;
+      // 保存原始样式
+      st.overflow = 'hidden';
+      st.position = 'fixed';
+      st.top = (-savedScrollY) + 'px';
+      st.left = '0';
+      st.right = '0';
+      st.width = '100%';
+      // 锁定 html 和 body 的滚动
+      document.documentElement.style.overflow = 'hidden';
+      document.documentElement.style.overscrollBehavior = 'none';
+    } else {
+      const st = document.body.style;
+      // 恢复原始样式
+      st.overflow = '';
+      st.position = '';
+      st.top = '';
+      st.left = '';
+      st.right = '';
+      st.width = '';
+      document.documentElement.style.overflow = '';
+      document.documentElement.style.overscrollBehavior = '';
+      // 恢复滚动位置
+      window.scrollTo(0, savedScrollY);
     }
   }
 

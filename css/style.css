@@ -814,10 +814,27 @@ input[type=number],input[type=text],input[type=time],textarea{border-radius:12px
 .app-locker-overlay{
   position:fixed;inset:0;z-index:99999;
   display:none;
+  touch-action:none;
+  -webkit-user-select:none;
+  user-select:none;
+  -webkit-tap-highlight-color:transparent;
+  overscroll-behavior:none;
+  -webkit-overflow-scrolling:auto;
+  padding-top:env(safe-area-inset-top,0);
+  padding-bottom:env(safe-area-inset-bottom,0);
+  padding-left:env(safe-area-inset-left,0);
+  padding-right:env(safe-area-inset-right,0);
 }
 .app-locker-overlay.active{
   display:flex;align-items:center;justify-content:center;
   animation:lockerIn .4s cubic-bezier(.25,.8,.25,1);
+}
+.app-locker-overlay.active ~ *,
+.app-locker-overlay.active ~ * *{
+  pointer-events:none !important;
+}
+.app-locker-overlay.active{
+  pointer-events:auto;
 }
 @keyframes lockerIn{
   from{opacity:0;backdrop-filter:blur(0);}
