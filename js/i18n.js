@@ -1,4 +1,4 @@
-/* ===== 专心通 / Focus Master · 国际化模块 ===== */
+/* ===== 专心通 / Focus Master · 国际化模块 v2 ===== */
 (function(){
   'use strict';
 
@@ -10,6 +10,8 @@
       navFocus: '专注',
       navSound: '声音',
       navTasks: '任务',
+      navSchedule: '时间表',
+      navGarden: '花园',
       navStats: '统计',
       navSettings: '设置',
       // timer view
@@ -46,6 +48,43 @@
       taskFocus: '专注',
       taskMin: '分',
       delete: '删除',
+      editTask: '编辑任务',
+      taskName: '任务名称',
+      taskDesc: '详细描述',
+      taskTags: '选择标签',
+      taskTime: '定时提醒（可选）',
+      clearTime: '清除',
+      save: '保存',
+      cancel: '取消',
+      newTask: '新建任务',
+      // schedule view
+      scheduleTitle: '今日时间表',
+      scheduleEmpty: '今天还没有定时任务，编辑任务时添加时间吧。',
+      enableNotify: '开启提醒',
+      disableNotify: '关闭提醒',
+      notifyOn: '提醒已开启',
+      notifyOff: '提醒已关闭',
+      notified: '已提醒',
+      // garden view
+      gardenTitle: '时光花园',
+      gardenSub: '每次专注，都会为你的花园种下一颗种子。',
+      gardenEmpty: '还没有花，专注一下种下第一颗种子吧。',
+      gsSeeds: '种子',
+      gsBlooms: '盛开',
+      gsStreak: '连续天数',
+      achievements: '花语成就',
+      ach1Name: '初绽',
+      ach1Desc: '完成第一次专注',
+      ach2Name: '小花匠',
+      ach2Desc: '收集 10 朵花',
+      ach3Name: '专注大师',
+      ach3Desc: '累计专注 100 分钟',
+      ach4Name: '坚持不懈',
+      ach4Desc: '连续专注 7 天',
+      ach5Name: '满园芬芳',
+      ach5Desc: '收集 50 朵花',
+      ach6Name: '百花齐放',
+      ach6Desc: '解锁所有花种',
       // stats view
       todayFocus: '今日专注',
       weekFocus: '本周专注',
@@ -54,7 +93,20 @@
       unitPomo: '个',
       weeks12: '近 12 周',
       days7: '最近 7 天',
-      // settings
+      // settings - theme
+      groupTheme: '外观主题',
+      themeLight: '浅色',
+      themeDark: '深色',
+      themeAuto: '跟随系统',
+      // settings - notify
+      groupNotify: '通知提醒',
+      enableReminders: '启用任务提醒',
+      notifyBefore: '提前提醒（分钟）',
+      reqPermission: '请求通知权限',
+      notifyPermGranted: '已授权',
+      notifyPermDenied: '已拒绝，请在系统设置中开启',
+      notifyPermDefault: '未授权',
+      // settings - timer
       settingsTitle: '设置',
       groupTimerMode: '计时模式',
       modePomodoro: '番茄模式',
@@ -75,6 +127,26 @@
       langZh: '中文',
       langEn: 'English',
       langAuto: '跟随系统',
+      // settings - tags
+      groupTags: '标签管理',
+      newTagPh: '输入新标签名…',
+      addTag: '添加',
+      tagChinese: '语文',
+      tagMath: '数学',
+      tagEnglish: '英语',
+      tagPhysics: '物理',
+      tagChemistry: '化学',
+      tagBiology: '生物',
+      tagHistory: '历史',
+      tagGeography: '地理',
+      tagPolitics: '政治',
+      tagWork: '工作',
+      tagStudy: '学习',
+      tagReading: '阅读',
+      tagExercise: '运动',
+      tagLife: '生活',
+      tagEntertainment: '娱乐',
+      // settings - other
       groupOther: '其他',
       immersiveToggle: '双击圆环进沉浸',
       showSeconds: '显示秒数',
@@ -88,9 +160,23 @@
       aboutName: '专心通 · Focus Master',
       aboutVersion: '版本',
       aboutDesc: '极简专注学习与工作工具，让你安静下来。',
-      aboutAuthor: '静而后能安',
+      aboutAuthor: '作者：xiaomingfg877',
       // days
       daySun: '日', dayMon: '一', dayTue: '二', dayWed: '三', dayThu: '四', dayFri: '五', daySat: '六',
+      // flower names
+      flowerSakura: '樱花',
+      flowerRose: '玫瑰',
+      flowerSunflower: '向日葵',
+      flowerLotus: '莲花',
+      flowerPlum: '梅花',
+      flowerChrysanthemum: '菊花',
+      flowerTulip: '郁金香',
+      flowerDaisy: '雏菊',
+      // flower colors (short labels for achievements)
+      // schedule months
+      month1: '1月', month2: '2月', month3: '3月', month4: '4月',
+      month5: '5月', month6: '6月', month7: '7月', month8: '8月',
+      month9: '9月', month10: '10月', month11: '11月', month12: '12月',
     },
     en: {
       appName: 'Focus Master',
@@ -98,6 +184,8 @@
       navFocus: 'Focus',
       navSound: 'Sound',
       navTasks: 'Tasks',
+      navSchedule: 'Schedule',
+      navGarden: 'Garden',
       navStats: 'Stats',
       navSettings: 'Settings',
       modeFocus: 'Focus',
@@ -129,6 +217,41 @@
       taskFocus: 'Focus',
       taskMin: 'm',
       delete: 'Delete',
+      editTask: 'Edit Task',
+      taskName: 'Task Name',
+      taskDesc: 'Description',
+      taskTags: 'Tags',
+      taskTime: 'Schedule (optional)',
+      clearTime: 'Clear',
+      save: 'Save',
+      cancel: 'Cancel',
+      newTask: 'New Task',
+      scheduleTitle: "Today's Schedule",
+      scheduleEmpty: 'No scheduled tasks. Add a time when editing a task.',
+      enableNotify: 'Enable Notifications',
+      disableNotify: 'Disable Notifications',
+      notifyOn: 'Notifications on',
+      notifyOff: 'Notifications off',
+      notified: 'Notified',
+      gardenTitle: 'Time Garden',
+      gardenSub: 'Each focus session plants a seed in your garden.',
+      gardenEmpty: 'No flowers yet. Start a focus session to plant your first seed.',
+      gsSeeds: 'Seeds',
+      gsBlooms: 'Blooms',
+      gsStreak: 'Day Streak',
+      achievements: 'Flower Achievements',
+      ach1Name: 'First Bloom',
+      ach1Desc: 'Complete your first focus session',
+      ach2Name: 'Gardener',
+      ach2Desc: 'Collect 10 flowers',
+      ach3Name: 'Focus Master',
+      ach3Desc: 'Accumulate 100 focus minutes',
+      ach4Name: 'Perseverance',
+      ach4Desc: '7-day focus streak',
+      ach5Name: 'Fragrant Garden',
+      ach5Desc: 'Collect 50 flowers',
+      ach6Name: 'Full Bloom',
+      ach6Desc: 'Unlock all flower types',
       todayFocus: 'Today',
       weekFocus: 'This Week',
       totalPomo: 'Total Pomodoros',
@@ -136,6 +259,17 @@
       unitPomo: '',
       weeks12: 'Last 12 Weeks',
       days7: 'Last 7 Days',
+      groupTheme: 'Appearance',
+      themeLight: 'Light',
+      themeDark: 'Dark',
+      themeAuto: 'System',
+      groupNotify: 'Notifications',
+      enableReminders: 'Enable task reminders',
+      notifyBefore: 'Remind before (min)',
+      reqPermission: 'Request permission',
+      notifyPermGranted: 'Granted',
+      notifyPermDenied: 'Denied, enable in system settings',
+      notifyPermDefault: 'Not granted',
       settingsTitle: 'Settings',
       groupTimerMode: 'Timer Mode',
       modePomodoro: 'Pomodoro',
@@ -156,6 +290,24 @@
       langZh: '中文',
       langEn: 'English',
       langAuto: 'System',
+      groupTags: 'Tag Management',
+      newTagPh: 'New tag name…',
+      addTag: 'Add',
+      tagChinese: 'Chinese',
+      tagMath: 'Math',
+      tagEnglish: 'English',
+      tagPhysics: 'Physics',
+      tagChemistry: 'Chemistry',
+      tagBiology: 'Biology',
+      tagHistory: 'History',
+      tagGeography: 'Geography',
+      tagPolitics: 'Politics',
+      tagWork: 'Work',
+      tagStudy: 'Study',
+      tagReading: 'Reading',
+      tagExercise: 'Exercise',
+      tagLife: 'Life',
+      tagEntertainment: 'Entertainment',
       groupOther: 'Other',
       immersiveToggle: 'Double-tap for immersive',
       showSeconds: 'Show seconds',
@@ -168,8 +320,19 @@
       aboutName: 'Focus Master · 专心通',
       aboutVersion: 'Version',
       aboutDesc: 'A minimalist focus tool for study and work.',
-      aboutAuthor: 'Stillness brings clarity',
+      aboutAuthor: 'Author: xiaomingfg877',
       daySun: 'S', dayMon: 'M', dayTue: 'T', dayWed: 'W', dayThu: 'T', dayFri: 'F', daySat: 'S',
+      flowerSakura: 'Sakura',
+      flowerRose: 'Rose',
+      flowerSunflower: 'Sunflower',
+      flowerLotus: 'Lotus',
+      flowerPlum: 'Plum Blossom',
+      flowerChrysanthemum: 'Chrysanthemum',
+      flowerTulip: 'Tulip',
+      flowerDaisy: 'Daisy',
+      month1: 'Jan', month2: 'Feb', month3: 'Mar', month4: 'Apr',
+      month5: 'May', month6: 'Jun', month7: 'Jul', month8: 'Aug',
+      month9: 'Sep', month10: 'Oct', month11: 'Nov', month12: 'Dec',
     }
   };
 
@@ -178,7 +341,6 @@
   function detectLang(){
     const saved = localStorage.getItem(LANG_KEY);
     if(saved === 'zh' || saved === 'en') return saved;
-    // detect system language
     const nav = navigator.language || navigator.userLanguage || 'en';
     return nav.toLowerCase().startsWith('zh') ? 'zh' : 'en';
   }
@@ -198,12 +360,9 @@
   function applyTranslations(){
     document.documentElement.lang = currentLang === 'zh' ? 'zh-CN' : 'en';
     document.title = t('appName');
-    // app name in header
     document.querySelectorAll('[data-i18n]').forEach(el=>{
       const key = el.dataset.i18n;
-      if(key === 'appName'){
-        el.textContent = t('appName');
-      } else if(el.dataset.i18nVars){
+      if(el.dataset.i18nVars){
         try{
           const vars = JSON.parse(el.dataset.i18nVars);
           el.textContent = t(key, vars);

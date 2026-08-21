@@ -16,19 +16,37 @@
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
-<body>
-  <!-- 顶部标题 -->
-  <header class="app-header">
-    <h1 class="app-title" data-i18n="appName">专心通</h1>
-    <p class="app-sub" id="appSub" data-i18n="appSub">静而后能安，安而后能虑</p>
-  </header>
+<body data-theme="auto">
+  <!-- 顶部胶囊导航栏 -->
+  <nav class="app-nav-top glass-capsule" id="appNavTop">
+    <button class="nav-item active" data-view="timer" data-i18n-aria="navFocus">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+    </button>
+    <button class="nav-item" data-view="sound" data-i18n-aria="navSound">
+      <svg viewBox="0 0 24 24"><path d="M3 10v4h4l5 4V6L7 10H3z" fill="currentColor"/><path d="M16 8a5 5 0 0 1 0 8" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+    </button>
+    <button class="nav-item" data-view="tasks" data-i18n-aria="navTasks">
+      <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    </button>
+    <button class="nav-item" data-view="schedule" data-i18n-aria="navSchedule">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 9h18M8 2v4M16 2v4M12 13v4M10 15h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/></svg>
+    </button>
+    <button class="nav-item" data-view="garden" data-i18n-aria="navGarden">
+      <svg viewBox="0 0 24 24"><path d="M12 22V12M12 12c-4-2-6-5-6-8a6 6 0 0 1 12 0c0 3-2 6-6 8z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="7" r="1" fill="currentColor"/><circle cx="14" cy="6" r="0.8" fill="currentColor"/><circle cx="13" cy="9" r="0.7" fill="currentColor"/></svg>
+    </button>
+    <button class="nav-item" data-view="stats" data-i18n-aria="navStats">
+      <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-6M22 20H2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/></svg>
+    </button>
+    <button class="nav-item" data-view="settings" data-i18n-aria="navSettings">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 1v3M12 20v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M1 12h3M20 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+    </button>
+  </nav>
 
   <!-- 主内容区 -->
   <main class="app-main">
 
     <!-- 视图一：专注计时 -->
     <section class="view view-timer active" id="view-timer">
-      <!-- 模式切换 -->
       <div class="mode-switch glass" id="modeSwitch">
         <button class="mode-btn active" data-mode="pomodoro">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 9v4l2.5 2" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/><path d="M9 4l3 1 3-1" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
@@ -95,7 +113,7 @@
       </div>
     </section>
 
-    <!-- 视图三：任务清单 -->
+    <!-- 视图三：任务清单（增强版：标签+描述+编辑+时间） -->
     <section class="view view-tasks" id="view-tasks">
       <form class="task-add" id="taskAdd">
         <input type="text" id="taskInput" data-i18n-ph="taskPlaceholder" placeholder="写下要做的事…" maxlength="60" />
@@ -105,7 +123,39 @@
       <p class="task-empty" id="taskEmpty" data-i18n="taskEmpty">还没有任务，添一件小事开始吧。</p>
     </section>
 
-    <!-- 视图四：专注统计 -->
+    <!-- 视图四：时间表 -->
+    <section class="view view-schedule" id="view-schedule">
+      <div class="schedule-header glass">
+        <h3 data-i18n="scheduleTitle">今日时间表</h3>
+        <p class="schedule-date" id="scheduleDate"></p>
+      </div>
+      <div class="schedule-controls">
+        <button class="btn-text" id="btnEnableNotify" data-i18n="enableNotify">🔔 开启提醒</button>
+        <span class="notify-status" id="notifyStatus" data-i18n="notifyOff">提醒已关闭</span>
+      </div>
+      <ul class="schedule-list" id="scheduleList"></ul>
+      <p class="task-empty" id="scheduleEmpty" data-i18n="scheduleEmpty">今天还没有定时任务，在任务里添加时间吧。</p>
+    </section>
+
+    <!-- 视图五：时光花园（特色功能） -->
+    <section class="view view-garden" id="view-garden">
+      <div class="garden-intro glass">
+        <h3 data-i18n="gardenTitle">时光花园</h3>
+        <p class="garden-sub" data-i18n="gardenSub">每次专注，都会为你的花园种下一颗种子。</p>
+        <div class="garden-stats">
+          <div class="garden-stat"><span class="gs-num" id="gardenSeeds">0</span><span class="gs-cap" data-i18n="gsSeeds">种子</span></div>
+          <div class="garden-stat"><span class="gs-num" id="gardenBlooms">0</span><span class="gs-cap" data-i18n="gsBlooms">盛开</span></div>
+          <div class="garden-stat"><span class="gs-num" id="gardenStreak">0</span><span class="gs-cap" data-i18n="gsStreak">连续天数</span></div>
+        </div>
+      </div>
+      <div class="garden-canvas glass" id="gardenCanvas"></div>
+      <div class="garden-achievements">
+        <h4 data-i18n="achievements">花语成就</h4>
+        <div class="achievement-list" id="achievementList"></div>
+      </div>
+    </section>
+
+    <!-- 视图六：专注统计 -->
     <section class="view view-stats" id="view-stats">
       <div class="stat-cards">
         <div class="stat-card glass">
@@ -130,8 +180,43 @@
       <div class="bar-chart glass" id="barChart"></div>
     </section>
 
-    <!-- 视图五：设置 -->
+    <!-- 视图七：设置 -->
     <section class="view view-settings" id="view-settings">
+      <!-- 主题 -->
+      <div class="setting-group glass">
+        <h3 data-i18n="groupTheme">外观主题</h3>
+        <div class="theme-selector">
+          <button class="theme-btn" data-theme="light">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            <span data-i18n="themeLight">浅色</span>
+          </button>
+          <button class="theme-btn" data-theme="dark">
+            <svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            <span data-i18n="themeDark">深色</span>
+          </button>
+          <button class="theme-btn active" data-theme="auto">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+            <span data-i18n="themeAuto">跟随系统</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 通知 -->
+      <div class="setting-group glass">
+        <h3 data-i18n="groupNotify">通知提醒</h3>
+        <div class="setting-row">
+          <span data-i18n="enableReminders">启用任务提醒</span>
+          <label class="switch"><input type="checkbox" id="cfgNotify" /><span></span></label>
+        </div>
+        <div class="setting-row">
+          <span data-i18n="notifyBefore">提前提醒（分钟）</span>
+          <input type="number" id="cfgNotifyBefore" min="0" max="30" value="0" />
+        </div>
+        <div class="setting-row">
+          <button class="btn-text" id="btnRequestNotify" data-i18n="reqPermission">请求通知权限</button>
+        </div>
+      </div>
+
       <!-- 计时模式 -->
       <div class="setting-group glass">
         <h3 data-i18n="groupTimerMode">计时模式</h3>
@@ -207,6 +292,17 @@
         </div>
       </div>
 
+      <!-- 标签管理 -->
+      <div class="setting-group glass">
+        <h3 data-i18n="groupTags">标签管理</h3>
+        <div class="tag-manager" id="tagManager"></div>
+        <div class="tag-add-row">
+          <input type="text" id="newTagInput" maxlength="10" data-i18n-ph="newTagPh" placeholder="输入新标签名…" />
+          <input type="color" id="newTagColor" value="#b5482e" />
+          <button class="btn-text" id="btnAddTag" data-i18n="addTag">添加</button>
+        </div>
+      </div>
+
       <!-- 其他 -->
       <div class="setting-group glass">
         <h3 data-i18n="groupOther">其他</h3>
@@ -247,8 +343,9 @@
           </div>
           <div class="about-info">
             <span class="about-name" data-i18n="aboutName">专心通 · Focus Master</span>
-            <span class="about-version">v1.2.0</span>
+            <span class="about-version">v2.0.0</span>
             <span class="about-desc" data-i18n="aboutDesc">极简专注学习与工作工具，让你安静下来。</span>
+            <span class="about-author" data-i18n="aboutAuthor">作者：xiaomingfg877</span>
           </div>
         </div>
       </div>
@@ -256,29 +353,38 @@
 
   </main>
 
-  <!-- 底部导航 -->
-  <nav class="app-nav glass-nav">
-    <button class="nav-item active" data-view="timer">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
-      <span data-i18n="navFocus">专注</span>
-    </button>
-    <button class="nav-item" data-view="sound">
-      <svg viewBox="0 0 24 24"><path d="M3 10v4h4l5 4V6L7 10H3z" fill="currentColor"/><path d="M16 8a5 5 0 0 1 0 8" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
-      <span data-i18n="navSound">声音</span>
-    </button>
-    <button class="nav-item" data-view="tasks">
-      <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-      <span data-i18n="navTasks">任务</span>
-    </button>
-    <button class="nav-item" data-view="stats">
-      <svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-6M22 20H2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/></svg>
-      <span data-i18n="navStats">统计</span>
-    </button>
-    <button class="nav-item" data-view="settings">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 1v3M12 20v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M1 12h3M20 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-      <span data-i18n="navSettings">设置</span>
-    </button>
-  </nav>
+  <!-- 任务编辑/新建弹窗 -->
+  <div class="modal" id="taskModal" hidden>
+    <div class="modal-mask"></div>
+    <div class="modal-content glass">
+      <h3 id="modalTitle" data-i18n="editTask">编辑任务</h3>
+      <div class="modal-body">
+        <div class="form-row">
+          <label data-i18n="taskName">任务名称</label>
+          <input type="text" id="modalTaskText" maxlength="60" />
+        </div>
+        <div class="form-row">
+          <label data-i18n="taskDesc">详细描述</label>
+          <textarea id="modalTaskDesc" rows="3" maxlength="200"></textarea>
+        </div>
+        <div class="form-row">
+          <label data-i18n="taskTags">选择标签</label>
+          <div class="tag-selector" id="modalTagSelector"></div>
+        </div>
+        <div class="form-row">
+          <label data-i18n="taskTime">定时提醒（可选）</label>
+          <div class="time-row">
+            <input type="time" id="modalTaskTime" />
+            <button class="btn-text" id="btnClearTime" data-i18n="clearTime">清除</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-text" id="btnModalCancel" data-i18n="cancel">取消</button>
+        <button class="btn-text btn-primary-text" id="btnModalSave" data-i18n="save">保存</button>
+      </div>
+    </div>
+  </div>
 
   <!-- 全屏沉浸遮罩 -->
   <div class="immersive" id="immersive" hidden>
@@ -293,6 +399,8 @@
   <script src="js/i18n.js"></script>
   <script src="js/sound.js"></script>
   <script src="js/tasks.js"></script>
+  <script src="js/schedule.js"></script>
+  <script src="js/garden.js"></script>
   <script src="js/stats.js"></script>
   <script src="js/timer.js"></script>
   <script src="js/app.js"></script>
