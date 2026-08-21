@@ -4,11 +4,6 @@ on:
   push:
     branches: [ main ]
   workflow_dispatch:
-    inputs:
-      teamId:
-        description: 'Apple Team ID (optional, for signing)'
-        required: false
-        default: ''
 
 jobs:
   build:
@@ -25,7 +20,10 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
+
+      - name: Generate app icon from SVG
+        run: node generate-icon.js
 
       - name: Sync Web Files
         run: npx cap sync ios
@@ -34,7 +32,7 @@ jobs:
         working-directory: ios/App
         run: pod install
 
-      - name: Build iOS (unsigned, for SideStore)
+      - name: Build iOS (unsigned)
         run: |
           cd ios/App
           xcodebuild -workspace App.xcworkspace -scheme App \

@@ -1,4 +1,4 @@
-/* ===== 专心通 · 专注统计 ===== */
+/* ===== 专心通 / Focus Master · 专注统计 v3 ===== */
 (function(){
   'use strict';
   const KEY = 'zxt_stats_v1';
@@ -10,6 +10,12 @@
   function save(){ localStorage.setItem(KEY, JSON.stringify(stats)); }
   function keyOf(d){ const z=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`; }
   function day(k){ if(!stats.days[k]) stats.days[k]={min:0,pomo:0}; return stats.days[k]; }
+
+  function t(key){ return window.I18n ? I18n.t(key) : ''; }
+  function dayName(idx){
+    const keys = ['daySun','dayMon','dayTue','dayWed','dayThu','dayFri','daySat'];
+    return t(keys[idx]);
+  }
 
   const Stats = {
     recordFocus(min){ day(keyOf(new Date())).min += min; save(); },
@@ -48,7 +54,7 @@
         else if(min>=60) cls+=' hm-3';
         else if(min>=25) cls+=' hm-2';
         else if(min>0) cls+=' hm-1';
-        cells.push(`<div class="${cls}" title="${keyOf(d)} · ${min}分钟"></div>`);
+        cells.push(`<div class="${cls}" title="${keyOf(d)} · ${min}${t('unitMin')}"></div>`);
       }
       wrap.innerHTML = cells.join('');
     },
@@ -56,14 +62,13 @@
       const wrap = document.getElementById('barChart');
       if(!wrap) return;
       const now = new Date();
-      const days = ['日','一','二','三','四','五','六'];
       let html='';
       for(let i=6;i>=0;i--){
         const d = new Date(now); d.setDate(now.getDate()-i);
         const s = stats.days[keyOf(d)];
         const min = s?s.min:0;
         const pct = Math.min(100, (min/120)*100);
-        html += `<div class="bar-col"><div class="bar" style="height:${Math.max(pct,3)}%" title="${min}分钟"></div><div class="bar-day">${days[d.getDay()]}</div></div>`;
+        html += `<div class="bar-col"><div class="bar" style="height:${Math.max(pct,3)}%" title="${min}${t('unitMin')}"></div><div class="bar-day">${dayName(d.getDay())}</div></div>`;
       }
       wrap.innerHTML = html;
     }

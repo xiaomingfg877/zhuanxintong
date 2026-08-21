@@ -1,17 +1,21 @@
 {
   "name": "专心通",
   "displayName": "专心通",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "极简专注学习与工作工具",
   "main": "index.html",
   "author": "专心通",
   "license": "MIT",
   "scripts": {
-    "build:ios": "cap sync ios && cap copy ios"
+    "build:ios": "cap sync ios && cap copy ios",
+    "generate-icon": "node generate-icon.js"
   },
   "devDependencies": {
     "@capacitor/cli": "^5.7.8",
-    "@capacitor/ios": "^5.7.8"
+    "@capacitor/core": "^5.7.8",
+    "@capacitor/ios": "^5.7.8",
+    "@capacitor/status-bar": "^5.0.6",
+    "sharp": "^0.33.0"
   },
   "capacitor": {
     "ios": {

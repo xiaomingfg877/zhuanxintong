@@ -15,7 +15,13 @@
     "allowsInlineMediaPlayback": true,
     "allowsAirPlayForMediaPlayback": true,
     "backgroundColor": "#f5f3ee",
-    "preferredStatusBarStyle": "Default",
+    "preferredStatusBarStyle": "DEFAULT",
     "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "StatusBar": {
+      "style": "DEFAULT",
+      "backgroundColor": "#f5f3ee"
+    }
   }
 }

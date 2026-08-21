@@ -1,15 +1,18 @@
-/* ===== 专心通 · 白噪音引擎 =====
-   用 Web Audio API 程序化生成自然声音，无需任何外部音频文件。
-   每种声音由「噪声源 + 滤波 + 调制」组合而成。 */
+/* ===== 专心通 / Focus Master · 白噪音引擎 v3 =====
+   程序化生成自然声音，无需外部音频文件。
+   修复 iOS/移动端音频播放问题：
+   1. 首次用户交互时解锁 AudioContext
+   2. 确保 resume() 在用户手势内同步调用
+   3. 处理 visibilitychange 恢复播放 */
 
 (function(){
   const SOUND_DEFS = [
-    { id:'rain',   name:'雨声', kanji:'听雨' },
-    { id:'wave',   name:'海浪', kanji:'观潮' },
-    { id:'forest', name:'森林', kanji:'山林' },
-    { id:'fire',   name:'篝火', kanji:'炉火' },
-    { id:'wind',   name:'风声', kanji:'松风' },
-    { id:'noise',  name:'白噪', kanji:'静噪' },
+    { id:'rain',   nameKey:'rain',   kanjiKey:'rainKj' },
+    { id:'wave',   nameKey:'wave',   kanjiKey:'waveKj' },
+    { id:'forest', nameKey:'forest', kanjiKey:'forestKj' },
+    { id:'fire',   nameKey:'fire',   kanjiKey:'fireKj' },
+    { id:'wind',   nameKey:'wind',   kanjiKey:'windKj' },
+    { id:'noise',  nameKey:'noise',  kanjiKey:'noiseKj' },
   ];
 
   const ICONS = {
@@ -24,19 +27,60 @@
   let ctx = null;
   let master = null;
   let volume = 0.6;
-  let current = null;       // 当前播放的声音实例 {id, stop}
-  let onStateChange = null; // 回调
+  let current = null;
+  let onStateChange = null;
+  let unlocked = false;
 
+  /* —— 创建/恢复 AudioContext —— */
   function ensureCtx(){
     if(!ctx){
       const AC = window.AudioContext || window.webkitAudioContext;
+      if(!AC) return false;
       ctx = new AC();
       master = ctx.createGain();
       master.gain.value = volume;
       master.connect(ctx.destination);
     }
-    if(ctx.state === 'suspended') ctx.resume();
+    // iOS/移动端：必须在用户手势内 resume
+    if(ctx.state === 'suspended'){
+      ctx.resume().catch(()=>{});
+    }
+    return true;
   }
+
+  /* —— iOS 音频解锁：首次触摸时播放一个静音 buffer —— */
+  function unlockAudio(){
+    if(unlocked) return;
+    if(!ensureCtx()) return;
+    try {
+      const buffer = ctx.createBuffer(1, 1, 22050);
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(ctx.destination);
+      source.start(0);
+      unlocked = true;
+    } catch(e){}
+  }
+
+  /* —— 全局触摸解锁监听 —— */
+  function setupUnlock(){
+    const unlock = () => {
+      unlockAudio();
+      document.removeEventListener('touchstart', unlock);
+      document.removeEventListener('click', unlock);
+    };
+    document.addEventListener('touchstart', unlock, { once: true });
+    document.addEventListener('click', unlock, { once: true });
+  }
+  setupUnlock();
+
+  /* —— 页面恢复时重新恢复 AudioContext —— */
+  document.addEventListener('visibilitychange', () => {
+    if(!ctx) return;
+    if(document.visibilityState === 'visible' && ctx.state === 'suspended'){
+      ctx.resume().catch(()=>{});
+    }
+  });
 
   /* —— 噪声 buffer 生成 —— */
   function noiseBuffer(type){
@@ -54,14 +98,14 @@
         b4=0.55000*b4+w*0.5329522; b5=-0.7616*b5-w*0.0168980;
         d[i]=(b0+b1+b2+b3+b4+b5+b6+w*0.5362)*0.11; b6=w*0.115926;
       }
-    } else { // brown
+    } else {
       let last=0;
       for(let i=0;i<len;i++){ const w=Math.random()*2-1; last=(last+0.02*w)/1.02; d[i]=last*3.2; }
     }
     return buf;
   }
 
-  /* —— 单个声音构建器：返回 {stop} —— */
+  /* —— 单个声音构建器 —— */
   function createSound(id){
     const out = ctx.createGain();
     out.gain.value = 0;
@@ -92,7 +136,6 @@
         const lp = ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=700;
         const g = ctx.createGain(); g.gain.value=0.9;
         s.connect(lp); lp.connect(g); g.connect(out); s.start();
-        // LFO 模拟海浪起伏
         const lfo = ctx.createOscillator(); lfo.frequency.value=0.1;
         const lg = ctx.createGain(); lg.gain.value=0.5;
         lfo.connect(lg); lg.connect(g.gain); lfo.start();
@@ -104,7 +147,6 @@
         const lp = ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=5200;
         const g = ctx.createGain(); g.gain.value=0.3;
         s.connect(lp); lp.connect(g); g.connect(out); s.start();
-        // 随机鸟鸣
         const t = setInterval(()=>{
           if(Math.random()>0.5) chirp(out);
         }, 2200 + Math.random()*2500);
@@ -116,7 +158,6 @@
         const lp = ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=1000;
         const g = ctx.createGain(); g.gain.value=0.7;
         s.connect(lp); lp.connect(g); g.connect(out); s.start();
-        // 随机爆裂声
         const t = setInterval(()=>{
           if(Math.random()>0.4) crackle(out);
         }, 180);
@@ -184,8 +225,8 @@
 
   /* —— 提示音（专注完成）—— */
   function chime(){
-    ensureCtx();
-    const notes = [880, 1108.73, 1318.51]; // A5 C#6 E6
+    if(!ensureCtx()) return;
+    const notes = [880, 1108.73, 1318.51];
     notes.forEach((f, i)=>{
       const o = ctx.createOscillator();
       o.type='sine'; o.frequency.value=f;
@@ -205,13 +246,19 @@
     icons: ICONS,
     isPlaying(id){ return current && current.id === id; },
     currentId(){ return current ? current.id : null; },
-    toggle(id){
-      ensureCtx();
+    async toggle(id){
+      // 确保 AudioContext 在用户手势内被恢复
+      if(!ensureCtx()) return;
+      // 再次确保 resume（iOS 有时第一次 resume 不生效）
+      if(ctx.state === 'suspended'){
+        try { await ctx.resume(); } catch(e){}
+      }
       if(current && current.id === id){
         current.stop(); current = null;
       } else {
         if(current) current.stop();
-        current = { id, stop: createSound(id).stop }; // 声音已在播放，保存 stop 句柄
+        const soundObj = createSound(id);
+        current = { id, stop: soundObj.stop };
       }
       if(onStateChange) onStateChange(current ? current.id : null);
     },
@@ -221,6 +268,7 @@
     },
     getVolume(){ return volume; },
     onStateChange(cb){ onStateChange = cb; },
-    chime
+    chime,
+    unlockAudio
   };
 })();

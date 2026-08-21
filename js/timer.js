@@ -1,8 +1,12 @@
-/* ===== 专心通 · 番茄钟（含循环模式 + 平滑圆环动画） ===== */
+/* ===== 专心通 / Focus Master · 计时器 v3 =====
+   支持两种模式：
+   - 番茄模式（Pomodoro）：专注后自动休息，循环进行
+   - 正常模式（Normal）：持续计时，不自动休息，完成后归零 */
 (function(){
   'use strict';
 
   let mode = 'focus';
+  let timerMode = 'pomodoro'; // 'pomodoro' | 'normal'
   let focusMin = 25, breakMin = 5;
   let longBreakMin = 15;
   let loopRounds = 4;
@@ -12,12 +16,12 @@
   let running = false;
   let timerId = null;
   let onTickCb = null, onCompleteCb = null;
+  let onModeChangeCb = null;
 
-  const RING_LEN = 2 * Math.PI * 128; // ≈804.25
+  const RING_LEN = 2 * Math.PI * 128;
 
-  // —— 平滑圆环动画 ——
-  let animCurrent = 0;   // 当前显示的 offset（插值中）
-  let animTarget = 0;    // 目标 offset
+  let animCurrent = 0;
+  let animTarget = 0;
   let rafId = null;
 
   function animateRing(){
@@ -29,7 +33,7 @@
       rafId = null;
       return;
     }
-    animCurrent += diff * 0.15; // 缓动系数，越小越慢
+    animCurrent += diff * 0.15;
     const ring = document.getElementById('ringFg');
     if(ring) ring.style.strokeDashoffset = animCurrent;
     rafId = requestAnimationFrame(animateRing);
@@ -56,22 +60,42 @@
 
     const modeEl = document.getElementById('timerMode');
     if(modeEl){
-      if(mode==='focus') modeEl.textContent = '专注';
-      else if(mode==='break') modeEl.textContent = '短休息';
-      else modeEl.textContent = '长休息';
+      if(window.I18n){
+        if(mode==='focus') modeEl.textContent = I18n.t('modeFocus');
+        else if(mode==='break') modeEl.textContent = I18n.t('modeBreak');
+        else modeEl.textContent = I18n.t('modeLongBreak');
+      } else {
+        if(mode==='focus') modeEl.textContent = '专注';
+        else if(mode==='break') modeEl.textContent = '短休息';
+        else modeEl.textContent = '长休息';
+      }
     }
 
     document.body.classList.toggle('break-mode', mode!=='focus');
 
     const roundEl = document.getElementById('timerRound');
     if(roundEl){
-      roundEl.textContent = loopEnabled ? `番茄 ${currentRound} / ${loopRounds}` : '';
+      if(timerMode === 'normal'){
+        roundEl.textContent = '';
+      } else if(window.I18n){
+        roundEl.textContent = loopEnabled ? I18n.t('pomodoroRound', {n: currentRound, total: loopRounds}) : '';
+      } else {
+        roundEl.textContent = loopEnabled ? `番茄 ${currentRound} / ${loopRounds}` : '';
+      }
     }
 
     const it = document.getElementById('immersiveTime');
     if(it) it.textContent = fmt(remaining);
     const ir = document.getElementById('immersiveRound');
-    if(ir) ir.textContent = loopEnabled ? `第 ${currentRound || 1} 轮` : '';
+    if(ir){
+      if(timerMode === 'normal'){
+        ir.textContent = '';
+      } else if(window.I18n){
+        ir.textContent = loopEnabled ? I18n.t('roundN', {n: currentRound || 1}) : '';
+      } else {
+        ir.textContent = loopEnabled ? `第 ${currentRound || 1} 轮` : '';
+      }
+    }
   }
 
   function setBtnIcon(isRunning){
@@ -97,7 +121,11 @@
     stop();
     if(onCompleteCb) onCompleteCb(finishedMode, minutes);
 
-    if(loopEnabled){
+    if(timerMode === 'normal'){
+      // 正常模式：专注完成后归零，等待手动开始
+      mode = 'focus';
+      remaining = focusMin * 60;
+    } else if(loopEnabled){
       if(finishedMode === 'focus'){
         currentRound += 1;
         if(currentRound >= loopRounds){
@@ -118,6 +146,7 @@
     }
     paint();
     setBtnIcon(false);
+    if(onModeChangeCb) onModeChangeCb(mode);
   }
 
   function start(){ if(running) return; running = true; setBtnIcon(true); timerId = setInterval(tick, 1000); }
@@ -129,6 +158,7 @@
     remaining = focusMin * 60;
     currentRound = 0;
     paint();
+    if(onModeChangeCb) onModeChangeCb(mode);
   }
   function skip(){ remaining = 1; tick(); }
 
@@ -136,7 +166,7 @@
     init(){ remaining = focusMin * 60; mode='focus'; currentRound=0; paint(); },
     start, pause, reset, skip,
     isRunning(){ return running; },
-    getState(){ return { mode, remaining, running, currentRound }; },
+    getState(){ return { mode, remaining, running, currentRound, timerMode }; },
     setPreset(f, b){ focusMin=f; breakMin=b; mode='focus'; currentRound=0; reset(); },
     setCustom(f, b){ focusMin=f; breakMin=b; mode='focus'; currentRound=0; reset(); },
     setLoop(enabled, rounds, longBreak){
@@ -144,11 +174,21 @@
       if(rounds) loopRounds = rounds;
       if(longBreak) longBreakMin = longBreak;
     },
+    setTimerMode(m){
+      timerMode = m;
+      if(m === 'normal'){
+        mode = 'focus';
+        currentRound = 0;
+      }
+      reset();
+    },
+    getTimerMode(){ return timerMode; },
     getConfig(){
-      return { focusMin, breakMin, longBreakMin, loopRounds, loopEnabled };
+      return { focusMin, breakMin, longBreakMin, loopRounds, loopEnabled, timerMode };
     },
     onTick(cb){ onTickCb = cb; },
     onComplete(cb){ onCompleteCb = cb; },
+    onModeChange(cb){ onModeChangeCb = cb; },
     paint
   };
 
