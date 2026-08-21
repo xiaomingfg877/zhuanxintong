@@ -1,5 +1,13 @@
 node_modules/
-android/
+# android/ 全部忽略，但保留手动生成的 res 资源（图标/Splash）以便 CI 打包
+android/*
+!android/app/
+android/app/*
+!android/app/src/
+android/app/src/*
+!android/app/src/main/
+android/app/src/main/*
+!android/app/src/main/res/
 build/
 *.log
 .DS_Store

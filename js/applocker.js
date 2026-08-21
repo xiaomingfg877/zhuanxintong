@@ -44,6 +44,8 @@
   let scheduledInterval = null;
   let backButtonListenerActive = false;
   let emergencyCount = 0;
+  let lastEmergencyResetAt = 0; // 紧急计数上次重置（防止超时时计数被清零导致可以点到5）
+  let confirmMask = null;
 
   function loadCfg(){
     try{
@@ -163,40 +165,148 @@
       </div>
     `;
 
-    // 紧急退出：连续点击 5 次才能强制退出
+    // 紧急退出：连续点击 5 次才能强制退出（3 秒内连续点击才有效，避免超时清零）
     emergencyCount = 0;
+    lastEmergencyResetAt = 0;
     const emergencyBtn = lockOverlay.querySelector('#lockerEmergency');
     if(emergencyBtn){
-      emergencyBtn.addEventListener('click', ()=>{
+      emergencyBtn.addEventListener('click', (ev)=>{
+        ev.preventDefault(); ev.stopPropagation();
+        const now = Date.now();
+        // 超过 3 秒没点击则重置计数
+        if(now - lastEmergencyResetAt > 3000) emergencyCount = 0;
+        lastEmergencyResetAt = now;
         emergencyCount++;
         if(emergencyCount >= 5){
           emergencyCount = 0;
+          // 先执行紧急退出惩罚（花园）
+          let penaltyResult = { affected: 0 };
+          try{
+            if(window.Garden && typeof Garden.penalize === 'function'){
+              // 依据锁定时长，每 25 分钟惩罚 1 朵花，至少 1 朵
+              const lockedMinutes = Math.max(1, Math.floor((lockEndTime ? (lockEndTime - (lockEndTime - 0/*placeholder*/)) : cfg.defaultDuration*60000) / 60000));
+              const penaltyBase = Math.max(1, Math.ceil(cfg.defaultDuration / 25));
+              penaltyResult = Garden.penalize(penaltyBase) || penaltyResult;
+            }
+          }catch(e){ console.warn('[Locker] garden penalty error', e); }
+          // 显示惩罚提示（原生 alert，简单可靠）
+          try{
+            const affected = penaltyResult.affected || 0;
+            const title = t('emergencyExitTitle');
+            let msg = t('emergencyExitDesc');
+            if(affected > 0) msg += '\n' + t('penaltyMsg', {n: affected});
+            setTimeout(()=>safeAlert(title, msg), 150);
+          }catch(e){}
           unlock(true);
         } else {
           emergencyBtn.textContent = `${t('lockerEmergency')} (${5 - emergencyCount})`;
-          setTimeout(()=>{
-            if(lockOverlay){
-              emergencyCount = Math.max(0, emergencyCount - 1);
+          // 3 秒后若没有继续点击则重置文案
+          clearTimeout(emergencyBtn._resetTimer);
+          emergencyBtn._resetTimer = setTimeout(()=>{
+            if(lockOverlay && document.body.contains(emergencyBtn)){
+              emergencyCount = 0;
               emergencyBtn.textContent = t('lockerEmergency');
             }
-          }, 1500);
+          }, 3000);
         }
       });
     }
   }
 
-  /* —— 启动锁机 —— */
-  function lock(durationMin){
-    if(!cfg.enabled) return false;
+  /* —— 简单的跨平台弹窗（优先自定义 DOM，兜底 alert） —— */
+  function safeAlert(title, message){
+    try{
+      if(confirmMask) return; // 已经有弹窗
+      const mask = document.createElement('div');
+      mask.className = 'locker-confirm-mask';
+      mask.innerHTML = `
+        <div class="locker-confirm-box">
+          <h3>${escapeHtml(title)}</h3>
+          <p style="white-space:pre-line;">${escapeHtml(message)}</p>
+          <div class="actions">
+            <button class="btn-confirm" data-act="ok">OK</button>
+          </div>
+        </div>`;
+      document.body.appendChild(mask);
+      confirmMask = mask;
+      const close = ()=>{ if(confirmMask === mask){ mask.remove(); confirmMask = null; } };
+      mask.querySelector('[data-act="ok"]').addEventListener('click', close);
+      mask.addEventListener('click', (e)=>{ if(e.target === mask) close(); });
+    }catch(e){
+      try{ alert((title?title+'\n':'') + message); }catch(_){}
+    }
+  }
+  function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  /* —— 进入锁机前 弹确认框；用户确认后再锁定 ——
+       返回 Promise<boolean>：是否确实进入了锁机
+       skipConfirm=true 则不弹框（Timer 联动时使用，启动专注的瞬间已经在 UI 确认过了）
+  */
+  function lockWithConfirm(durationMin, skipConfirm){
+    if(activeLock) return Promise.resolve(false);
+    // 没有开启总开关且非测试模式：直接返回 false
+    // (测试模式使用 lock(..., force=true) 直接走 lock)
+    const doLock = ()=>lock(durationMin, false);
+    if(skipConfirm){
+      return Promise.resolve(!!doLock());
+    }
+    return new Promise((resolve)=>{
+      try{
+        if(confirmMask){ confirmMask.remove(); confirmMask = null; }
+        const mask = document.createElement('div');
+        mask.className = 'locker-confirm-mask';
+        const emergencyTxt = t('lockerEmergency');
+        const tipTxt = t('lockerConfirmTip', {text: emergencyTxt}).replace(/\n/g, '<br>');
+        mask.innerHTML = `
+          <div class="locker-confirm-box">
+            <h3>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="10" rx="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              ${escapeHtml(t('lockerConfirmTitle'))}
+            </h3>
+            <p>${escapeHtml(t('lockerConfirmDesc'))}</p>
+            <div class="tip">${tipTxt}</div>
+            <div class="actions">
+              <button class="btn-cancel" data-act="cancel">${escapeHtml(t('lockerConfirmCancel'))}</button>
+              <button class="btn-confirm" data-act="ok">${escapeHtml(t('lockerConfirmOK'))}</button>
+            </div>
+          </div>`;
+        document.body.appendChild(mask);
+        confirmMask = mask;
+        const close = (result)=>{ if(confirmMask === mask){ mask.remove(); confirmMask = null; } resolve(result); };
+        mask.querySelector('[data-act="cancel"]').addEventListener('click', ()=>close(false));
+        mask.querySelector('[data-act="ok"]').addEventListener('click', ()=>{
+          const ok = !!doLock();
+          close(ok);
+        });
+        mask.addEventListener('click', (e)=>{ if(e.target === mask) close(false); });
+      }catch(e){
+        console.warn('[Locker] confirm popup error', e);
+        resolve(!!doLock());
+      }
+    });
+  }
+
+  /* —— 启动锁机 ——
+     force=true: 忽略 cfg.enabled 检查（用于测试锁机）
+  */
+  function lock(durationMin, force){
+    if(!force && !cfg.enabled) return false;
     if(activeLock) return false;
     const minutes = Math.max(1, Math.min(480, durationMin || cfg.defaultDuration));
     lockEndTime = Date.now() + minutes * 60 * 1000;
     activeLock = true;
     ensureOverlay();
     renderOverlayContent(); // 重新渲染以更新i18n和应用列表
+    if(!lockOverlay){
+      activeLock = false; lockEndTime = 0; return false;
+    }
     lockOverlay.classList.add('active');
-    // 阻止触摸事件穿透
+    // 阻止触摸事件穿透（关键：确保事件不被下层吸收）
     lockOverlay.style.pointerEvents = 'auto';
+    lockOverlay.style.touchAction = 'none';
     // iOS: 阻止所有触摸/手势事件
     blockTouchEvents(true);
     // 进入全屏（如果支持）
@@ -220,6 +330,7 @@
     if(lockOverlay){
       lockOverlay.classList.remove('active');
       lockOverlay.style.pointerEvents = '';
+      lockOverlay.style.touchAction = '';
     }
     if(timerInterval){
       clearInterval(timerInterval);
@@ -231,6 +342,51 @@
     exitFullScreen();
     restoreBack();
     if(onLockChange) onLockChange(false, 0, forced);
+  }
+
+  /* —— 测试锁机（忽略 enabled 开关，走确认弹窗 -> 确认后强制锁 15 秒） —— */
+  function testLock(){
+    if(activeLock) return Promise.resolve(false);
+    return new Promise((resolve)=>{
+      try{
+        if(confirmMask){ confirmMask.remove(); confirmMask = null; }
+        const mask = document.createElement('div');
+        mask.className = 'locker-confirm-mask';
+        const emergencyTxt = t('lockerEmergency');
+        const tipTxt = t('lockerConfirmTip', {text: emergencyTxt}).replace(/\n/g, '<br>') +
+          `<br><br>⏱️ 测试锁机将锁定 <b>15 秒</b>。`;
+        mask.innerHTML = `
+          <div class="locker-confirm-box">
+            <h3>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="10" rx="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              ${escapeHtml(t('lockerConfirmTitle'))}
+            </h3>
+            <p>${escapeHtml(t('lockerConfirmDesc'))}</p>
+            <div class="tip">${tipTxt}</div>
+            <div class="actions">
+              <button class="btn-cancel" data-act="cancel">${escapeHtml(t('lockerConfirmCancel'))}</button>
+              <button class="btn-confirm" data-act="ok">${escapeHtml(t('lockerConfirmOK'))}</button>
+            </div>
+          </div>`;
+        document.body.appendChild(mask);
+        confirmMask = mask;
+        const close = (result)=>{ if(confirmMask === mask){ mask.remove(); confirmMask = null; } resolve(result); };
+        mask.querySelector('[data-act="cancel"]').addEventListener('click', ()=>close(false));
+        mask.querySelector('[data-act="ok"]').addEventListener('click', ()=>{
+          // 测试锁机：强制锁 15 秒
+          const durMin = 15 / 60; // 0.25 min = 15 sec
+          const ok = lock(durMin, true);
+          close(ok);
+        });
+        mask.addEventListener('click', (e)=>{ if(e.target === mask) close(false); });
+      }catch(e){
+        console.warn('[Locker] testLock popup error', e);
+        resolve(!!lock(15/60, true));
+      }
+    });
   }
 
   /* —— 重新激活锁机（从后台回到前台时调用）—— */
@@ -723,6 +879,10 @@
     onLockChange(cb){ onLockChange = cb; },
     guideToSystemSettings,
     checkNativePermission,
+    lockWithConfirm,
+    testLock,
+    // 直接 lock（内部用，跳过确认但仍遵守 enabled 开关；force=true 忽略开关用于测试）
+    forceLock(min, force){ return lock(min, !!force); },
     // 重新渲染锁机遮罩（用于语言切换后）
     refreshOverlay(){ if(lockOverlay && activeLock) renderOverlayContent(); },
     // 刷新应用列表显示（用于语言切换）

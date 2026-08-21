@@ -117,18 +117,41 @@
   }
 
   /* SVG 花朵样式（每种花独特图案） */
-  function flowerSVG(flowerId, bloomAt){
+  function flowerSVG(flowerId, bloomAt, status){
     const meta = FLOWER_TYPES.find(f=>f.id===flowerId) || FLOWER_TYPES[0];
-    const c1 = meta.color, c2 = meta.color2;
+    let c1 = meta.color, c2 = meta.color2;
     const bloom = typeof bloomAt === 'number' ? (Date.now() - bloomAt) : (1000*60*60); // 超过 1 小时就盛开
     const isBloom = bloom > 60*1000; // 超过 1 分钟就盛开（播种一分钟后开花）
     const scale = isBloom ? 1 : 0.5 + bloom/(60*1000) * 0.5;
-    const bloomClass = isBloom ? 'bloom' : '';
+    let bloomClass = isBloom ? 'bloom' : '';
+    let extraFilter = '';
+    let extraTitle = '';
+    if(status === 'withered'){
+      // 枯萎：去饱和 + 降低亮度
+      c1 = desaturate(c1, 0.8);
+      c2 = desaturate(c2, 0.8);
+      bloomClass += ' withered';
+      extraFilter = 'filter:grayscale(0.8) brightness(0.7);';
+      extraTitle = ' · ' + t('penaltyWither');
+    } else if(status === 'removed'){
+      extraTitle = ' · ' + t('penaltyRemove');
+    }
 
     const inner = flowerInnerSVG(meta.id, c1, c2);
-    return `<div class="flower ${bloomClass}" title="${t(meta.nameKey)} · ${meta.minFocus}+min" style="transform:scale(${scale})">
+    return `<div class="flower ${bloomClass}" title="${t(meta.nameKey)} · ${meta.minFocus}+min${extraTitle}" style="transform:scale(${status==='removed'?0.3:scale});opacity:${status==='removed'?0.2:1};${extraFilter}">
       <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">${inner}</svg>
     </div>`;
+  }
+
+  // HEX 颜色去饱和
+  function desaturate(hex, amount){
+    const h = hex.replace('#','');
+    let r = parseInt(h.substring(0,2),16), g = parseInt(h.substring(2,4),16), b = parseInt(h.substring(4,6),16);
+    const gray = 0.299*r + 0.587*g + 0.114*b;
+    r = Math.round(r*(1-amount) + gray*amount);
+    g = Math.round(g*(1-amount) + gray*amount);
+    b = Math.round(b*(1-amount) + gray*amount);
+    return '#' + [r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('');
   }
 
   function flowerInnerSVG(id, c1, c2){
@@ -237,7 +260,7 @@
       } else {
         // 限制显示最近 60 朵（避免卡顿）
         const flowers = state.flowers.slice(-60);
-        canvas.innerHTML = flowers.map(f=>flowerSVG(f.type, f.createdAt)).join('');
+        canvas.innerHTML = flowers.map(f=>flowerSVG(f.type, f.createdAt, f.status)).join('');
       }
     }
 
@@ -258,10 +281,45 @@
     }
   }
 
+  /* 紧急退出惩罚：对花朵做处罚（随机选 n 朵：一半枯萎，一半消失） */
+  function penalize(count){
+    if(!count || count <= 0) count = 1;
+    const valid = state.flowers.filter(f => f.status !== 'removed');
+    if(valid.length === 0) return { affected: 0, withered: 0, removed: 0 };
+    // 限制惩罚数量，不超过实际花朵的 30% 或指定 count 的较小值，避免一次性清空
+    const safeCount = Math.min(count, valid.length, Math.max(1, Math.ceil(valid.length * 0.3)));
+    const shuffled = valid.slice().sort(()=>Math.random()-0.5);
+    const targets = shuffled.slice(0, safeCount);
+    let witheredCount = 0, removedCount = 0;
+    targets.forEach((f, idx)=>{
+      // 一半直接标记为 removed（下次渲染就很小很透明），一半标记为 withered
+      if(idx < Math.ceil(targets.length / 2)){
+        f.status = 'withered';
+        witheredCount++;
+      } else {
+        f.status = 'removed';
+        removedCount++;
+      }
+    });
+    // 记录惩罚日志
+    state.penalties = state.penalties || [];
+    state.penalties.push({
+      id: 'p_'+Date.now().toString(36),
+      at: Date.now(),
+      reason: 'emergency_exit',
+      withered: witheredCount,
+      removed: removedCount,
+    });
+    save();
+    render();
+    return { affected: targets.length, withered: witheredCount, removed: removedCount };
+  }
+
   /* 公共 API */
   window.Garden = {
     onFocusComplete,
     render,
+    penalize,
     getStats(){
       return {
         totalFlowers: state.flowers.length,

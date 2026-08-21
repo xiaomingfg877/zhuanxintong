@@ -167,6 +167,10 @@
   function updateModeUI(m){
     const pomodoroSettings = $('pomodoroSettings');
     const cfgBreakRow = $('cfgBreakRow');
+    // 写入 documentElement 属性，配合 CSS 选择器 [data-timer-mode="normal"] 隐藏休息相关 UI
+    try{
+      document.documentElement.setAttribute('data-timer-mode', m || cfg.timerMode || 'pomodoro');
+    }catch(_){}
     if(m === 'normal'){
       if(pomodoroSettings) pomodoroSettings.style.display = 'none';
       if(cfgBreakRow) cfgBreakRow.style.display = 'none';
@@ -622,11 +626,57 @@
     const btnTest = $('btnTestLocker');
     if(btnTest){
       btnTest.addEventListener('click', ()=>{
-        if(!AppLocker.isEnabled()){
-          alert(I18n.t('enableLocker'));
-          return;
+        if(typeof AppLocker.testLock === 'function'){
+          AppLocker.testLock();
+        } else {
+          AppLocker.lock(1); // 兜底
         }
-        AppLocker.lock(1); // 测试锁机 1 分钟
+      });
+    }
+
+    // ——— 专注视图（上边栏第一个）锁机组 ———
+    const cfgLockerTop = $('cfgLockerTop');
+    const cfgLockerInFocusTop = $('cfgLockerInFocusTop');
+    const cfgLockerDurationTop = $('cfgLockerDurationTop');
+    const testLockerTopBtn = $('btnTestLockerTop');
+    // 加载初始值
+    if(cfgLockerTop) cfgLockerTop.checked = AppLocker.isEnabled();
+    if(cfgLockerInFocusTop) cfgLockerInFocusTop.checked = AppLocker.isLockInFocus();
+    if(cfgLockerDurationTop) cfgLockerDurationTop.value = AppLocker.getDefaultDuration();
+    // 双向联动（设置界面的开关）：保持同步
+    function syncLockerToggles(){
+      const e1 = $('cfgLocker'), e2 = cfgLockerTop;
+      if(e1 && e2 && e1.checked !== e2.checked){ e2.checked = e1.checked; }
+      const e3 = $('cfgLockerInFocus'), e4 = cfgLockerInFocusTop;
+      if(e3 && e4 && e3.checked !== e4.checked){ e4.checked = e3.checked; }
+      const e5 = $('cfgLockerDuration'), e6 = cfgLockerDurationTop;
+      if(e5 && e6 && e5.value !== e6.value){ e6.value = e5.value; }
+    }
+    syncLockerToggles();
+    if(cfgLockerTop){
+      cfgLockerTop.addEventListener('change', ()=>{
+        AppLocker.setEnabled(cfgLockerTop.checked);
+        const e = $('cfgLocker'); if(e) e.checked = cfgLockerTop.checked;
+      });
+    }
+    if(cfgLockerInFocusTop){
+      cfgLockerInFocusTop.addEventListener('change', ()=>{
+        AppLocker.setLockInFocus(cfgLockerInFocusTop.checked);
+        const e = $('cfgLockerInFocus'); if(e) e.checked = cfgLockerInFocusTop.checked;
+      });
+    }
+    if(cfgLockerDurationTop){
+      cfgLockerDurationTop.addEventListener('change', ()=>{
+        const v = Math.max(1, Math.min(480, +cfgLockerDurationTop.value || 25));
+        cfgLockerDurationTop.value = v;
+        AppLocker.setDefaultDuration(v);
+        const e = $('cfgLockerDuration'); if(e) e.value = v;
+      });
+    }
+    if(testLockerTopBtn){
+      testLockerTopBtn.addEventListener('click', ()=>{
+        if(typeof AppLocker.testLock === 'function') AppLocker.testLock();
+        else AppLocker.lock(1, true);
       });
     }
   }
@@ -754,4 +804,67 @@
     try{ if(window.Sound && Sound.forceResume) Sound.forceResume(); }catch(_){}
     document.removeEventListener('touchstart', firstTouch, true);
   }, { once:true, capture:true });
+
+  // —— 启动加载界面 Splash 隐藏（稍作延迟，确保首屏过渡平滑）——
+  function hideSplash(){
+    const el = $('appSplash');
+    if(!el) return;
+    // 最少显示 400ms 避免闪烁
+    setTimeout(()=>{
+      el.classList.add('hide');
+      setTimeout(()=>{ try{ el.remove(); }catch(_){} }, 600);
+    }, 400);
+  }
+  if(document.readyState === 'complete' || document.readyState === 'interactive'){
+    hideSplash();
+  } else {
+    window.addEventListener('load', hideSplash);
+    setTimeout(hideSplash, 1500); // 兜底
+  }
+
+  // —— 声音选择消失修复：若 Sound.defs/icons 未就绪则延迟重绘，否则依赖现有流程 ——
+  (function retrySoundGrid(){
+    let tries = 0;
+    const doTry = ()=>{
+      const grid = $('soundGrid');
+      if(!grid || !window.Sound){ tries++; if(tries<10) setTimeout(doTry, 100); return; }
+      if(!Sound.defs || !Sound.defs.length || !Sound.icons){
+        tries++;
+        if(tries < 15){ setTimeout(doTry, 120); return; }
+      }
+      try{
+        // 若已经有子元素就不重绘（Sound.onStateChange 依赖这些元素），否则重绘
+        if(!grid.children.length && typeof renderSoundGrid === 'function') renderSoundGrid();
+      }catch(_){}
+    };
+    doTry();
+  })();
+
+  // —— 通知权限修复：页面就绪后主动尝试一次（解决 iOS/Android 原生请求不到的问题）——
+  (function ensureNotifyPerm(){
+    const doIt = async ()=>{
+      if(!window.Schedule) return;
+      try{
+        // 如果有 Capacitor LocalNotifications，先走原生请求
+        if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications){
+          try{
+            const LN = window.Capacitor.Plugins.LocalNotifications;
+            if(LN.checkPermissions){ await LN.checkPermissions(); }
+            if(LN.requestPermissions){ await LN.requestPermissions(); }
+          }catch(e){ console.warn('notify capacitor perm err', e); }
+        }
+        if(typeof Schedule.requestPermission === 'function'){
+          await Schedule.requestPermission();
+        }
+        // 更新按钮文案
+        const btn = $('btnRequestNotify');
+        if(btn && Schedule.getPermissionStatusAsync){
+          const p = await Schedule.getPermissionStatusAsync();
+          if(p==='granted') btn.textContent = I18n.t('notifyPermGranted');
+          else if(p==='denied') btn.textContent = I18n.t('notifyPermDenied');
+        }
+      }catch(e){ console.warn('notify init err', e); }
+    };
+    setTimeout(doIt, 300);
+  })();
 })();

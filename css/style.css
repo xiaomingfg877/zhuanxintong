@@ -1010,3 +1010,107 @@ input[type=number],input[type=text],input[type=time],textarea{border-radius:12px
   line-height:1.5;max-height:60px;overflow:hidden;
   text-overflow:ellipsis;
 }
+
+/* ===== 启动加载界面 Splash ===== */
+.app-splash{
+  position:fixed;inset:0;z-index:99999;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--bg);background-image:var(--bg-grad);
+  transition:opacity .5s ease, visibility .5s ease;
+}
+.app-splash.hide{opacity:0;visibility:hidden;pointer-events:none;}
+.splash-inner{display:flex;flex-direction:column;align-items:center;gap:14px;}
+.splash-icon{
+  width:120px;height:120px;border-radius:30px;
+  background:rgba(255,255,255,.65);
+  backdrop-filter:var(--glass-blur);
+  -webkit-backdrop-filter:var(--glass-blur);
+  border:1px solid var(--glass-border);
+  box-shadow:var(--glass-shadow-strong);
+  display:flex;align-items:center;justify-content:center;
+  animation:splash-pop .7s cubic-bezier(.2,.9,.2,1.1) both;
+}
+[data-theme-mode="dark"] .splash-icon{background:rgba(40,38,34,.7);}
+@keyframes splash-pop{0%{opacity:0;transform:scale(.8);}100%{opacity:1;transform:scale(1);}}
+.splash-name{font-size:22px;font-weight:600;color:var(--ink);letter-spacing:.06em;margin-top:8px;}
+.splash-sub{font-size:12px;color:var(--ink-soft);letter-spacing:.12em;}
+.splash-loader{
+  width:32px;height:32px;margin-top:14px;
+  border:3px solid var(--line);border-top-color:var(--vermilion);
+  border-radius:50%;animation:spin 1s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ===== 正常模式：隐藏休息设置 ===== */
+[data-timer-mode="normal"] .timer-presets .preset-break,
+[data-timer-mode="normal"] .timer-custom .custom-sep,
+[data-timer-mode="normal"] .timer-custom #customBreak,
+[data-timer-mode="normal"] .timer-custom .custom-unit.break-unit{display:none !important;}
+
+/* ===== 专注视图 · 锁机设置组 ===== */
+.focus-locker-group{
+  margin-top:20px;padding:16px 20px;border-radius:var(--radius);
+  background:var(--glass-bg);
+  backdrop-filter:var(--glass-blur);
+  -webkit-backdrop-filter:var(--glass-blur);
+  border:1px solid var(--glass-border);
+  box-shadow:var(--glass-shadow);
+  display:flex;flex-direction:column;gap:12px;
+  max-width:520px;margin-left:auto;margin-right:auto;
+}
+[data-theme-mode="dark"] .focus-locker-group{background:var(--glass-bg);}
+.locker-row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.locker-label{font-size:13px;color:var(--ink-soft);letter-spacing:.06em;display:flex;align-items:center;gap:8px;}
+.locker-label svg{width:16px;height:16px;color:var(--vermilion);}
+.locker-row .switch-wrap{display:flex;align-items:center;gap:10px;}
+.locker-duration-input{
+  display:flex;align-items:center;gap:6px;
+}
+.locker-duration-input input[type=number]{
+  width:56px;padding:8px 10px;border:1px solid var(--line-strong);border-radius:12px;
+  font-size:14px;text-align:center;color:var(--ink);
+  background:rgba(255,255,255,.6);outline:none;
+}
+[data-theme-mode="dark"] .locker-duration-input input[type=number]{background:rgba(40,38,34,.6);}
+.locker-duration-input .unit{font-size:12px;color:var(--ink-soft);}
+.locker-test-btn{
+  padding:8px 14px;font-size:12px;border-radius:12px;
+  background:var(--vermilion-soft);color:var(--vermilion);
+  border:1px solid rgba(181,72,46,.2);
+  transition:all .15s;
+}
+.locker-test-btn:active{transform:scale(.96);background:rgba(181,72,46,.2);}
+
+/* ===== 进入锁机前 确认弹窗 ===== */
+.locker-confirm-mask{
+  position:fixed;inset:0;z-index:9000;
+  background:rgba(20,18,14,.55);backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  display:flex;align-items:center;justify-content:center;padding:24px;
+  animation:fadeIn .2s ease;
+}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+.locker-confirm-box{
+  width:100%;max-width:360px;padding:28px 24px;border-radius:24px;
+  background:var(--glass-bg-strong);backdrop-filter:var(--glass-blur-strong);
+  -webkit-backdrop-filter:var(--glass-blur-strong);
+  border:1px solid var(--glass-border);box-shadow:var(--glass-shadow-strong);
+  animation:popIn .28s cubic-bezier(.2,.9,.2,1.1);
+}
+@keyframes popIn{from{opacity:0;transform:scale(.9);}to{opacity:1;transform:scale(1);}}
+.locker-confirm-box h3{
+  font-size:18px;color:var(--vermilion);margin-bottom:12px;display:flex;align-items:center;gap:8px;
+}
+.locker-confirm-box h3 svg{width:20px;height:20px;}
+.locker-confirm-box p{font-size:14px;color:var(--ink);line-height:1.7;margin-bottom:10px;}
+.locker-confirm-box .tip{font-size:12px;color:var(--ink-soft);background:rgba(181,72,46,.08);padding:10px 14px;border-radius:12px;margin:14px 0 20px;line-height:1.6;}
+.locker-confirm-box .actions{display:flex;gap:10px;justify-content:flex-end;}
+.locker-confirm-box .btn-cancel{
+  padding:10px 18px;font-size:14px;border-radius:12px;color:var(--ink-soft);
+  background:transparent;border:1px solid var(--line-strong);
+}
+.locker-confirm-box .btn-confirm{
+  padding:10px 20px;font-size:14px;border-radius:12px;color:#fff;
+  background:var(--vermilion);font-weight:500;
+}
+.locker-confirm-box .btn-confirm:active{background:var(--vermilion-text);}

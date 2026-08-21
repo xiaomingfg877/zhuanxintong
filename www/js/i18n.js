@@ -184,7 +184,23 @@
       nativeLockGuide: '前往系统设置',
       testLocker: '测试锁机',
       lockerEnded: '锁机已结束',
-      // about
+      // focus view locker
+      focusLockerGroup: '专注锁机',
+      focusLockerEnable: '专注时开启锁机',
+      focusLockerDuration: '锁定时长',
+      focusLockerTest: '测试锁机',
+      // locker confirm popup
+      lockerConfirmTitle: '即将进入锁机模式',
+      lockerConfirmDesc: '锁机模式下，在设定时间内将无法退出专心通或切换其他应用，请保持专注。',
+      lockerConfirmTip: '💡 紧急情况可连续点击 5 次「{text}」按钮强制退出。\n⚠️ 紧急退出会在时光花园中记录惩罚，你的花可能会枯萎哦。',
+      lockerConfirmCancel: '再想想',
+      lockerConfirmOK: '我已了解，开始锁机',
+      // locker emergency penalty (garden)
+      emergencyExitTitle: '紧急退出已记录',
+      emergencyExitDesc: '本次紧急退出已记录，时光花园中的花朵受到了影响。',
+      penaltyWither: '枯萎',
+      penaltyRemove: '花朵消失',
+      penaltyMsg: '因为紧急退出锁机，{n} 朵花受到了惩罚。',
       groupAbout: '关于',
       aboutName: '专心通 · Focus Master',
       aboutVersion: '版本',
@@ -374,6 +390,23 @@
       nativeLockGuide: 'Open system settings',
       testLocker: 'Test lock',
       lockerEnded: 'Lock ended',
+      // focus view locker
+      focusLockerGroup: 'Focus Lock',
+      focusLockerEnable: 'Lock during focus',
+      focusLockerDuration: 'Lock duration',
+      focusLockerTest: 'Test lock',
+      // locker confirm popup
+      lockerConfirmTitle: 'About to enter Lock Mode',
+      lockerConfirmDesc: 'In Lock Mode, you cannot exit Focus Master or switch to other apps within the set time. Stay focused.',
+      lockerConfirmTip: '💡 In an emergency, tap "{text}" 5 times consecutively to force exit.\n⚠️ Emergency exits are recorded in your Time Garden — your flowers may wither.',
+      lockerConfirmCancel: 'Not now',
+      lockerConfirmOK: 'I understand, start lock',
+      // locker emergency penalty (garden)
+      emergencyExitTitle: 'Emergency exit recorded',
+      emergencyExitDesc: 'This emergency exit has been logged. Flowers in your Time Garden have been affected.',
+      penaltyWither: 'Withered',
+      penaltyRemove: 'Flower removed',
+      penaltyMsg: '{n} flower(s) penalized due to emergency lock exit.',
       groupAbout: 'About',
       aboutName: 'Focus Master · 专心通',
       aboutVersion: 'Version',

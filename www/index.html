@@ -17,6 +17,24 @@
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body data-theme="auto">
+  <!-- 启动加载界面 (Splash Screen 占位) -->
+  <div class="app-splash" id="appSplash">
+    <div class="splash-inner">
+      <div class="splash-icon">
+        <svg viewBox="0 0 512 512" width="96" height="96">
+          <rect width="512" height="512" rx="112" fill="#f5f3ee"/>
+          <circle cx="256" cy="256" r="132" fill="none" stroke="#2c2c2c" stroke-width="20"/>
+          <circle cx="256" cy="256" r="10" fill="#b5482e"/>
+          <path d="M256 124 V256" stroke="#2c2c2c" stroke-width="20" stroke-linecap="round"/>
+          <path d="M256 256 L336 196" stroke="#b5482e" stroke-width="20" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <span class="splash-name" data-i18n="appName">专心通</span>
+      <span class="splash-sub" data-i18n="appSub">静而后能安，安而后能虑</span>
+      <div class="splash-loader"></div>
+    </div>
+  </div>
+
   <!-- 顶部胶囊导航栏 -->
   <nav class="app-nav-top glass-capsule" id="appNavTop">
     <button class="nav-item active" data-view="timer" data-i18n-aria="navFocus">
@@ -84,19 +102,53 @@
       </div>
 
       <div class="timer-presets" id="timerPresets">
-        <button class="preset active" data-focus="25" data-break="5">专注25 · 休息5</button>
-        <button class="preset" data-focus="50" data-break="10">专注50 · 休息10</button>
-        <button class="preset" data-focus="15" data-break="3">专注15 · 休息3</button>
-        <button class="preset" data-focus="90" data-break="20">专注90 · 休息20</button>
+        <button class="preset active" data-focus="25" data-break="5">
+          <span class="preset-focus">专注25</span><span class="preset-break"> · 休息5</span>
+        </button>
+        <button class="preset" data-focus="50" data-break="10">
+          <span class="preset-focus">专注50</span><span class="preset-break"> · 休息10</span>
+        </button>
+        <button class="preset" data-focus="15" data-break="3">
+          <span class="preset-focus">专注15</span><span class="preset-break"> · 休息3</span>
+        </button>
+        <button class="preset" data-focus="90" data-break="20">
+          <span class="preset-focus">专注90</span><span class="preset-break"> · 休息20</span>
+        </button>
       </div>
 
       <div class="timer-custom glass">
         <span class="custom-label" data-i18n="custom">自定义</span>
         <input type="number" id="customFocus" min="1" max="180" value="25" />
-        <span class="custom-sep">·</span>
+        <span class="custom-sep" id="customSep">·</span>
         <input type="number" id="customBreak" min="1" max="60" value="5" />
         <span class="custom-unit" data-i18n="minute">分</span>
         <button class="btn-text" id="btnCustom" data-i18n="apply">应用</button>
+      </div>
+
+      <!-- 专注视图：锁机设置 (上边栏第一个界面内) -->
+      <div class="focus-locker-group glass" id="focusLockerGroup">
+        <div class="flg-head">
+          <svg viewBox="0 0 24 24" width="18" height="18">
+            <path d="M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5zm0 2a3 3 0 0 1 3 3v3H9V6a3 3 0 0 1 3-3z" fill="currentColor"/>
+          </svg>
+          <span data-i18n="groupLocker">锁机</span>
+        </div>
+        <div class="flg-row">
+          <span data-i18n="enableLocker">启用应用锁机</span>
+          <label class="switch"><input type="checkbox" id="cfgLockerTop" /><span></span></label>
+        </div>
+        <div class="flg-row">
+          <span data-i18n="lockInFocus">专注时自动锁定</span>
+          <label class="switch"><input type="checkbox" id="cfgLockerInFocusTop" checked /><span></span></label>
+        </div>
+        <div class="flg-row">
+          <span data-i18n="lockDuration">默认锁定时长（分）</span>
+          <input type="number" id="cfgLockerDurationTop" min="1" max="480" value="25" />
+        </div>
+        <div class="flg-row flg-row-actions">
+          <button class="btn-text" id="btnTestLockerTop" data-i18n="testLocker">测试锁机</button>
+          <button class="btn-text btn-ghost" id="btnOpenLockerSettings" data-i18n="moreSettings">更多设置</button>
+        </div>
       </div>
 
       <p class="timer-hint" id="timerHint" data-i18n="timerHint">点中间的圆开始专注，双击进入沉浸</p>
@@ -282,16 +334,6 @@
         </div>
       </div>
 
-      <!-- 语言 -->
-      <div class="setting-group glass">
-        <h3 data-i18n="groupLanguage">语言</h3>
-        <div class="lang-selector">
-          <button class="lang-btn" data-lang="zh" data-i18n="langZh">中文</button>
-          <button class="lang-btn" data-lang="en" data-i18n="langEn">English</button>
-          <button class="lang-btn active" data-lang="auto" data-i18n="langAuto">跟随系统</button>
-        </div>
-      </div>
-
       <!-- 标签管理 -->
       <div class="setting-group glass">
         <h3 data-i18n="groupTags">标签管理</h3>
@@ -300,37 +342,6 @@
           <input type="text" id="newTagInput" maxlength="10" data-i18n-ph="newTagPh" placeholder="输入新标签名…" />
           <input type="color" id="newTagColor" value="#b5482e" />
           <button class="btn-text" id="btnAddTag" data-i18n="addTag">添加</button>
-        </div>
-      </div>
-
-      <!-- 锁机 -->
-      <div class="setting-group glass">
-        <h3 data-i18n="groupLocker">锁机</h3>
-        <div class="setting-row">
-          <span data-i18n="enableLocker">启用应用锁机</span>
-          <label class="switch"><input type="checkbox" id="cfgLocker" /><span></span></label>
-        </div>
-        <div class="setting-row">
-          <span data-i18n="lockInFocus">专注时自动锁定</span>
-          <label class="switch"><input type="checkbox" id="cfgLockerInFocus" checked /><span></span></label>
-        </div>
-        <div class="setting-row">
-          <span data-i18n="lockDuration">默认锁定时长（分）</span>
-          <input type="number" id="cfgLockerDuration" min="1" max="480" value="25" />
-        </div>
-        <div class="setting-row">
-          <span data-i18n="scheduledLock">定时锁定</span>
-          <label class="switch"><input type="checkbox" id="cfgLockerScheduled" /><span></span></label>
-        </div>
-        <div class="setting-row" id="lockerScheduledRow" style="display:none;">
-          <span data-i18n="scheduledLockTime">锁定时间</span>
-          <input type="time" id="cfgLockerTime" value="22:00" />
-        </div>
-        <div class="setting-row">
-          <button class="btn-text" id="btnLockerGuide" data-i18n="nativeLockGuide">前往系统设置</button>
-        </div>
-        <div class="setting-row">
-          <button class="btn-text" id="btnTestLocker" data-i18n="testLocker">测试锁机</button>
         </div>
       </div>
 
@@ -356,6 +367,16 @@
         <div class="setting-row setting-row-link" id="cfgClear">
           <span data-i18n="clearAllData">清除所有数据</span>
           <span class="danger" data-i18n="clear">清除</span>
+        </div>
+      </div>
+
+      <!-- 语言 (移到关于上方) -->
+      <div class="setting-group glass">
+        <h3 data-i18n="groupLanguage">语言</h3>
+        <div class="lang-selector">
+          <button class="lang-btn" data-lang="zh" data-i18n="langZh">中文</button>
+          <button class="lang-btn" data-lang="en" data-i18n="langEn">English</button>
+          <button class="lang-btn active" data-lang="auto" data-i18n="langAuto">跟随系统</button>
         </div>
       </div>
 
