@@ -41,7 +41,6 @@ jobs:
             -configuration Debug \
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
-            -derivedDataPath ../../build \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_IDENTITY="" \
@@ -49,19 +48,31 @@ jobs:
             IPHONEOS_DEPLOYMENT_TARGET=15.0 \
             build
 
-      - name: Package IPA
+      - name: Find and Package IPA
         run: |
-          cd build/Build/Products/Debug-iphoneos
-          if [ -d "App.app" ]; then
-            mkdir -p Payload
-            cp -r App.app Payload/
-            zip -r ../../../zhuanxintong.ipa Payload/
-            echo "IPA created successfully"
-          else
-            echo "ERROR: App.app not found. Check build output."
-            ls -la
+          echo "=== Searching for App.app ==="
+          APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "App.app" -path "*/Debug-iphoneos/*" 2>/dev/null | head -1)
+          
+          if [ -z "$APP_PATH" ]; then
+            echo "Not found in DerivedData, trying other locations..."
+            APP_PATH=$(find / -name "App.app" -path "*/Debug*" -maxdepth 8 2>/dev/null | head -1)
+          fi
+          
+          if [ -z "$APP_PATH" ]; then
+            echo "ERROR: Could not find App.app"
+            echo "=== Searching broadly ==="
+            find ~/Library/Developer/Xcode -name "*.app" 2>/dev/null | head -20
             exit 1
           fi
+          
+          echo "Found App.app at: $APP_PATH"
+          APP_DIR=$(dirname "$APP_PATH")
+          
+          mkdir -p Payload
+          cp -r "$APP_PATH" Payload/
+          zip -r zhuanxintong.ipa Payload/
+          echo "IPA created at: $(pwd)/zhuanxintong.ipa"
+          ls -la zhuanxintong.ipa
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
@@ -69,12 +80,3 @@ jobs:
           name: zhuanxintong-ios
           path: zhuanxintong.ipa
           retention-days: 30
-
-      - name: Upload .dSYM (for debugging)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: dSYM
-          path: build/Build/Products/Debug-iphoneos/App.app.dSYM
-          retention-days: 30
-          if-no-files-found: ignore
