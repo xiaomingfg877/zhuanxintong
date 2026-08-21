@@ -893,6 +893,19 @@ input[type=number],input[type=text],input[type=time],textarea{border-radius:12px
 .app-locker-overlay .locker-hint.warning{
   color:#d1604a;font-weight:500;
 }
+.app-locker-overlay .locker-ios-limit{
+  font-size:11px;
+  color:rgba(245,243,238,.4);
+  letter-spacing:.04em;
+  max-width:300px;
+  line-height:1.5;
+  margin-top:14px;
+  padding:10px 14px;
+  border-radius:10px;
+  background:rgba(209,96,74,.08);
+  border:1px solid rgba(209,96,74,.18);
+  text-align:center;
+}
 .app-locker-overlay .locker-actions{
   margin-top:48px;
 }

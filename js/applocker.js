@@ -136,6 +136,10 @@
     if(!lockOverlay) return;
     const lang = (window.I18n && I18n.getLang) ? I18n.getLang() : 'zh';
     const lockedNames = getLockedAppNames();
+    const plat = platform();
+    // iOS 平台显示系统限制提示
+    const iosLimitHtml = (plat === 'ios') ?
+      `<p class="locker-ios-limit">${t('lockerIOSLimit')}</p>` : '';
     lockOverlay.innerHTML = `
       <div class="locker-bg"></div>
       <div class="locker-content">
@@ -152,6 +156,7 @@
           <span class="locker-apps-list">${lockedNames}</span>
         </div>
         <p class="locker-hint" id="lockerHint">${t('lockerHint')}</p>
+        ${iosLimitHtml}
         <div class="locker-actions">
           <button class="locker-emergency" id="lockerEmergency">${t('lockerEmergency')}</button>
         </div>
@@ -226,6 +231,34 @@
     exitFullScreen();
     restoreBack();
     if(onLockChange) onLockChange(false, 0, forced);
+  }
+
+  /* —— 重新激活锁机（从后台回到前台时调用）—— */
+  function reLock(){
+    if(!activeLock) return;
+    if(lockEndTime <= Date.now()){
+      unlock(false);
+      return;
+    }
+    // 重新渲染遮罩（语言可能切换）
+    ensureOverlay();
+    renderOverlayContent();
+    lockOverlay.classList.add('active');
+    lockOverlay.style.pointerEvents = 'auto';
+    // 重新阻止触摸事件
+    blockTouchEvents(true);
+    // 重新进入全屏
+    requestFullScreen();
+    // 重新锁定滚动
+    lockPageScroll(true);
+    // 重新启动计时器（如果已停止）
+    if(!timerInterval){
+      startTimer();
+    }
+    // 重新阻止返回
+    preventBack();
+    // 更新显示
+    updateTimerDisplay();
   }
 
   /* —— 启动锁机计时器 —— */
@@ -591,12 +624,40 @@
       if(cfg.enabled && cfg.scheduledEnabled){
         startScheduledCheck();
       }
-      // 可见性变化：从后台回前台时重新检查
+      // 可见性变化：从后台回前台时重新检查 + 重新激活锁机
       document.addEventListener('visibilitychange', ()=>{
         if(document.visibilityState === 'visible' && cfg.enabled){
           checkScheduledLock();
+          // 关键修复：iOS 上滑退出后回到应用，若锁机未到期，立即重新激活锁机遮罩
+          if(activeLock && lockEndTime > Date.now()){
+            reLock();
+          }
         }
       });
+      // Capacitor App 状态变化：原生层从后台回前台
+      try {
+        if(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App){
+          const App = window.Capacitor.Plugins.App;
+          if(App.addListener){
+            App.addListener('appStateChange', (state)=>{
+              if(state && state.isActive && cfg.enabled){
+                // 应用回到前台，重新检查定时锁定
+                checkScheduledLock();
+                // 若锁机未到期，重新激活
+                if(activeLock && lockEndTime > Date.now()){
+                  reLock();
+                }
+              }
+            });
+            // 监听应用恢复活跃（iOS 特有）
+            App.addListener('resume', ()=>{
+              if(activeLock && lockEndTime > Date.now()){
+                reLock();
+              }
+            });
+          }
+        }
+      } catch(e){}
     },
     lock,
     unlock,
