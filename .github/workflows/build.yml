@@ -55,7 +55,7 @@ jobs:
           if [ -d "App.app" ]; then
             mkdir -p Payload
             cp -r App.app Payload/
-            zip -r ../../zhuanxintong.ipa Payload/
+            zip -r ../../../zhuanxintong.ipa Payload/
             echo "IPA created successfully"
           else
             echo "ERROR: App.app not found. Check build output."
