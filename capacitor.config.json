@@ -1,0 +1,21 @@
+{
+  "appId": "com.zhuanxintong.focus",
+  "appName": "专心通",
+  "webDir": ".",
+  "server": {
+    "android": {
+      "buildOptions": {
+        "keystorePath": "debug.keystore",
+        "keystoreAlias": "debug"
+      }
+    }
+  },
+  "ios": {
+    "contentInset": "never",
+    "allowsInlineMediaPlayback": true,
+    "allowsAirPlayForMediaPlayback": true,
+    "backgroundColor": "#f5f3ee",
+    "preferredStatusBarStyle": "Default",
+    "webContentsDebuggingEnabled": false
+  }
+}

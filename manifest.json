@@ -1,0 +1,19 @@
+{
+  "name": "专心通",
+  "short_name": "专心通",
+  "description": "极简专注学习与工作工具，让你安静下来。",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f5f3ee",
+  "theme_color": "#f5f3ee",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

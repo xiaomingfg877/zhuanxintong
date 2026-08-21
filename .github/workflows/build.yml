@@ -1,0 +1,89 @@
+name: Build iOS IPA
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      teamId:
+        description: 'Apple Team ID (optional, for signing)'
+        required: false
+        default: ''
+
+jobs:
+  build:
+    name: Build iOS App
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Capacitor
+        run: npm install
+
+      - name: Add iOS Platform
+        run: npx cap add ios
+
+      - name: Sync Web Files
+        run: |
+          # Copy all web assets into Capacitor www directory
+          mkdir -p www
+          cp index.html www/
+          cp manifest.json www/ 2>/dev/null || true
+          cp icon.svg www/ 2>/dev/null || true
+          cp sw.js www/ 2>/dev/null || true
+          cp -r css www/ 2>/dev/null || true
+          cp -r js www/ 2>/dev/null || true
+          npx cap sync ios
+
+      - name: Configure Signing (Free/Manual)
+        run: |
+          # For free signing with SideStore, we build without code signing
+          cd ios/App
+          # Set the build settings for unsigned build
+          xcodebuild -workspace App.xcworkspace -scheme App \
+            -configuration Debug \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath ../../build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            build 2>&1 | tail -20
+
+      - name: Package IPA
+        run: |
+          cd build/Build/Products/Debug-iphoneos
+          if [ -d "App.app" ]; then
+            mkdir -p Payload
+            cp -r App.app Payload/
+            zip -r ../../zhuanxintong.ipa Payload/
+            echo "IPA created successfully"
+          else
+            echo "ERROR: App.app not found. Check build output."
+            exit 1
+          fi
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: zhuanxintong-ios
+          path: zhuanxintong.ipa
+          retention-days: 30
+
+      - name: Upload .dSYM (for debugging)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dSYM
+          path: build/Build/Products/Debug-iphoneos/App.app.dSYM
+          retention-days: 30
+          if-no-files-found: ignore
