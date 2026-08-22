@@ -108,11 +108,15 @@
         const LN = window.Capacitor.Plugins.LocalNotifications;
         if(LN.checkPermissions){
           const p = await LN.checkPermissions();
-          return p && (p.display || p.notification) || 'default';
+          if(p){
+            // 检查是否有任意权限被授予
+            if(p.display === 'granted' || p.notification === 'granted') return 'granted';
+            if(p.display === 'denied' || p.notification === 'denied') return 'denied';
+          }
         }
       }
     } catch(_){}
-    if(typeof Notification !== 'undefined') return Notification.permission;
+    if(typeof Notification !== 'undefined') return Notification.permission || 'default';
     return 'default';
   }
 

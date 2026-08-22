@@ -165,18 +165,121 @@
     });
   });
   function updateModeUI(m){
-    const pomodoroSettings = $('pomodoroSettings');
-    const cfgBreakRow = $('cfgBreakRow');
-    // 写入 documentElement 属性，配合 CSS 选择器 [data-timer-mode="normal"] 隐藏休息相关 UI
-    try{
-      document.documentElement.setAttribute('data-timer-mode', m || cfg.timerMode || 'pomodoro');
-    }catch(_){}
-    if(m === 'normal'){
-      if(pomodoroSettings) pomodoroSettings.style.display = 'none';
-      if(cfgBreakRow) cfgBreakRow.style.display = 'none';
-    } else {
-      if(pomodoroSettings) pomodoroSettings.style.display = '';
-      if(cfgBreakRow) cfgBreakRow.style.display = '';
+    try {
+      const mode = m || cfg.timerMode || 'pomodoro';
+      console.log('[updateModeUI] mode=' + mode);
+      
+      // 写入 documentElement 属性，配合 CSS 选择器
+      try{
+        document.documentElement.setAttribute('data-timer-mode', mode);
+        document.body.setAttribute('data-timer-mode', mode);
+      }catch(_){}
+      
+      const isNormal = mode === 'normal';
+      
+      // —— 设置视图：隐藏番茄循环和休息行 ——
+      const pomodoroSettings = $('pomodoroSettings');
+      const cfgBreakRow = $('cfgBreakRow');
+      
+      if(isNormal){
+        if(pomodoroSettings){
+          pomodoroSettings.setAttribute('data-hidden', 'true');
+          pomodoroSettings.style.setProperty('display', 'none', 'important');
+          pomodoroSettings.style.setProperty('visibility', 'hidden', 'important');
+          pomodoroSettings.style.setProperty('height', '0', 'important');
+          pomodoroSettings.style.setProperty('max-height', '0', 'important');
+          pomodoroSettings.style.setProperty('overflow', 'hidden', 'important');
+          pomodoroSettings.style.setProperty('padding', '0', 'important');
+          pomodoroSettings.style.setProperty('margin', '0', 'important');
+        }
+        if(cfgBreakRow){
+          cfgBreakRow.setAttribute('data-hidden', 'true');
+          cfgBreakRow.style.setProperty('display', 'none', 'important');
+          cfgBreakRow.style.setProperty('visibility', 'hidden', 'important');
+          cfgBreakRow.style.setProperty('height', '0', 'important');
+          cfgBreakRow.style.setProperty('max-height', '0', 'important');
+          cfgBreakRow.style.setProperty('overflow', 'hidden', 'important');
+        }
+      } else {
+        if(pomodoroSettings){
+          pomodoroSettings.removeAttribute('data-hidden');
+          pomodoroSettings.style.removeProperty('display');
+          pomodoroSettings.style.removeProperty('visibility');
+          pomodoroSettings.style.removeProperty('height');
+          pomodoroSettings.style.removeProperty('max-height');
+          pomodoroSettings.style.removeProperty('overflow');
+          pomodoroSettings.style.removeProperty('padding');
+          pomodoroSettings.style.removeProperty('margin');
+        }
+        if(cfgBreakRow){
+          cfgBreakRow.removeAttribute('data-hidden');
+          cfgBreakRow.style.removeProperty('display');
+          cfgBreakRow.style.removeProperty('visibility');
+          cfgBreakRow.style.removeProperty('height');
+          cfgBreakRow.style.removeProperty('max-height');
+          cfgBreakRow.style.removeProperty('overflow');
+        }
+      }
+      
+      // —— 专注视图：隐藏自定义中的休息部分 ——
+      const customBreak = $('customBreak');
+      const customSep = document.querySelector('.custom-sep');
+      const customUnit = document.querySelector('.timer-custom .custom-unit');
+      const timerCustom = document.querySelector('.timer-custom');
+      
+      if(isNormal){
+        // 隐藏休息输入框
+        if(customBreak){
+          customBreak.style.setProperty('display', 'none', 'important');
+          customBreak.style.setProperty('visibility', 'hidden', 'important');
+          customBreak.style.setProperty('width', '0', 'important');
+          customBreak.style.setProperty('height', '0', 'important');
+          customBreak.style.setProperty('padding', '0', 'important');
+          customBreak.style.setProperty('margin', '0', 'important');
+          customBreak.style.setProperty('opacity', '0', 'important');
+          customBreak.setAttribute('disabled', 'disabled');
+          customBreak.setAttribute('aria-hidden', 'true');
+        }
+        // 隐藏分隔符
+        if(customSep){
+          customSep.style.setProperty('display', 'none', 'important');
+          customSep.style.setProperty('visibility', 'hidden', 'important');
+          customSep.style.setProperty('width', '0', 'important');
+          customSep.style.setProperty('opacity', '0', 'important');
+        }
+        // 调整自定义区域布局，让应用按钮紧贴专注输入
+        if(timerCustom){
+          timerCustom.style.setProperty('gap', '4px', 'important');
+        }
+      } else {
+        if(customBreak){
+          customBreak.style.removeProperty('display');
+          customBreak.style.removeProperty('visibility');
+          customBreak.style.removeProperty('width');
+          customBreak.style.removeProperty('height');
+          customBreak.style.removeProperty('padding');
+          customBreak.style.removeProperty('margin');
+          customBreak.style.removeProperty('opacity');
+          customBreak.removeAttribute('disabled');
+          customBreak.removeAttribute('aria-hidden');
+        }
+        if(customSep){
+          customSep.style.removeProperty('display');
+          customSep.style.removeProperty('visibility');
+          customSep.style.removeProperty('width');
+          customSep.style.removeProperty('opacity');
+        }
+        if(timerCustom){
+          timerCustom.style.removeProperty('gap');
+        }
+      }
+      
+      // 重新渲染预设按钮标签
+      renderPresetLabels();
+      
+      console.log('[updateModeUI] Done, isNormal=' + isNormal);
+    } catch(e) {
+      console.error('[updateModeUI] Error:', e);
     }
   }
 
@@ -200,10 +303,33 @@
 
   // —— 预设按钮 ——
   function renderPresetLabels(){
-    document.querySelectorAll('.preset').forEach(b=>{
-      const f = b.dataset.focus, m = b.dataset.break;
-      b.textContent = I18n.t('presetFocus', {n: f, m: m});
-    });
+    try {
+      const mode = (Timer.getTimerMode && Timer.getTimerMode()) || cfg.timerMode || 'pomodoro';
+      const isNormal = mode === 'normal';
+      const presets = document.querySelectorAll('.preset');
+      if(!presets.length) { console.warn('[renderPresetLabels] No presets found'); return; }
+      presets.forEach(b=>{
+        const f = b.dataset.focus;
+        const m = b.dataset.break;
+        if(!f) return;
+        let html;
+        if(isNormal){
+          // 正常模式：只显示专注时间
+          const label = (window.I18n && I18n.t) ? I18n.t('presetFocusOnly', {n: f}) : `专注${f}`;
+          html = `<span class="preset-focus">${label}</span>`;
+          b.style.gap = '0';
+        } else {
+          // 番茄模式：显示专注·休息
+          const label = (window.I18n && I18n.t) ? I18n.t('presetFocus', {n: f, m: m}) : `专注${f} · 休息${m}`;
+          html = `<span class="preset-focus">${label}</span>`;
+          b.style.gap = '';
+        }
+        b.innerHTML = html;
+      });
+      console.log('[renderPresetLabels] Done, mode=' + mode);
+    } catch(e) {
+      console.error('[renderPresetLabels] Error:', e);
+    }
   }
   $('timerPresets').addEventListener('click', (e)=>{
     const b = e.target.closest('.preset');
@@ -281,38 +407,83 @@
 
   // —— 白噪音 ——
   const soundGrid = $('soundGrid');
+  let soundReady = !!(window.Sound && Sound.defs && Sound.icons);
   function renderSoundGrid(){
     if(!soundGrid) return;
-    soundGrid.innerHTML = Sound.defs.map(s=>`
-      <button class="sound-card" data-id="${s.id}">
-        <span class="sc-pulse"></span>
-        <svg viewBox="0 0 24 24">${Sound.icons[s.id]}</svg>
-        <span class="sc-name">${I18n.t(s.nameKey)}</span>
-        <span class="sc-kanji">${I18n.t(s.kanjiKey)}</span>
-      </button>
-    `).join('');
-    const cur = Sound.currentId();
-    if(cur){
-      soundGrid.querySelectorAll('.sound-card').forEach(c=>c.classList.toggle('playing', c.dataset.id===cur));
+    if(!window.Sound || !Sound.defs || !Sound.icons){
+      // Sound 尚未就绪，稍后重试
+      soundGrid.innerHTML = '<p style="color:var(--ink-soft);text-align:center;padding:20px;">加载中...</p>';
+      setTimeout(()=>{ soundReady = !!(window.Sound && Sound.defs); if(soundReady) renderSoundGrid(); }, 200);
+      return;
+    }
+    try {
+      soundGrid.innerHTML = Sound.defs.map(s=>`
+        <button class="sound-card" data-id="${s.id}">
+          <span class="sc-pulse"></span>
+          <svg viewBox="0 0 24 24">${Sound.icons[s.id]}</svg>
+          <span class="sc-name">${(window.I18n && I18n.t) ? I18n.t(s.nameKey) : s.nameKey}</span>
+          <span class="sc-kanji">${(window.I18n && I18n.t) ? I18n.t(s.kanjiKey) : s.kanjiKey}</span>
+        </button>
+      `).join('');
+      const cur = Sound.currentId && Sound.currentId();
+      if(cur){
+        soundGrid.querySelectorAll('.sound-card').forEach(c=>c.classList.toggle('playing', c.dataset.id===cur));
+      }
+      soundReady = true;
+    } catch(e) {
+      console.error('[renderSoundGrid] Error:', e);
     }
   }
+  // 立即尝试渲染，如果 Sound 未就绪则延迟重试
   renderSoundGrid();
-  soundGrid.addEventListener('click', (e)=>{
-    const card = e.target.closest('.sound-card');
-    if(!card) return;
-    Sound.toggle(card.dataset.id);
-  });
-  Sound.onStateChange((id)=>{
-    soundGrid.querySelectorAll('.sound-card').forEach(c=>c.classList.toggle('playing', c.dataset.id===id));
-    $('soundVolume').hidden = !id;
-  });
-  const volSlider = $('volSlider');
-  volSlider.value = cfg.volume;
-  $('volVal').textContent = cfg.volume;
-  Sound.setVolume(cfg.volume / 100);
-  volSlider.addEventListener('input', ()=>{
-    const v = +volSlider.value; Sound.setVolume(v/100); $('volVal').textContent = v; cfg.volume = v; saveCfg(cfg);
-  });
+  
+  // 延迟绑定 Sound 相关的事件，确保 Sound 已就绪
+  const bindSoundEvents = () => {
+    if(!window.Sound){
+      setTimeout(bindSoundEvents, 100);
+      return;
+    }
+    try {
+      soundGrid.addEventListener('click', (e)=>{
+        const card = e.target.closest('.sound-card');
+        if(!card) return;
+        if(Sound.toggle) Sound.toggle(card.dataset.id);
+      });
+      if(Sound.onStateChange){
+        Sound.onStateChange((id)=>{
+          soundGrid.querySelectorAll('.sound-card').forEach(c=>c.classList.toggle('playing', c.dataset.id===id));
+          const volEl = $('soundVolume');
+          if(volEl) volEl.hidden = !id;
+        });
+      }
+      const volSlider = $('volSlider');
+      if(volSlider){
+        volSlider.value = cfg.volume;
+        const volVal = $('volVal');
+        if(volVal) volVal.textContent = cfg.volume;
+        if(Sound.setVolume){
+          try { Sound.setVolume(cfg.volume / 100); } catch(_){}
+        }
+        volSlider.addEventListener('input', ()=>{
+          const v = +volSlider.value;
+          if(Sound.setVolume){ try { Sound.setVolume(v/100); } catch(_){} }
+          if(volVal) volVal.textContent = v;
+          cfg.volume = v; saveCfg(cfg);
+        });
+      }
+      console.log('[App] Sound events bound OK');
+    } catch(e) {
+      console.error('[App] Sound bind error:', e);
+    }
+  };
+  // 页面加载后立即尝试绑定
+  if(document.readyState === 'complete' || soundReady){
+    bindSoundEvents();
+  } else {
+    window.addEventListener('load', bindSoundEvents, { once: true });
+    // 兜底：最多等待 2 秒
+    setTimeout(bindSoundEvents, 2000);
+  }
 
   // —— 任务 + 标签管理 + 任务编辑弹窗 ——
   $('taskAdd').addEventListener('submit', (e)=>{
@@ -493,191 +664,109 @@
 
   // —— 锁机功能初始化 ——
   if(window.AppLocker){
-    // 初始化
-    AppLocker.init();
-    // 加载锁机配置
-    const scheduled = AppLocker.getScheduled();
-    $('cfgLocker').checked = AppLocker.isEnabled();
-    $('cfgLockerInFocus').checked = AppLocker.isLockInFocus();
-    $('cfgLockerDuration').value = AppLocker.getDefaultDuration();
-    $('cfgLockerScheduled').checked = scheduled.enabled;
-    $('cfgLockerTime').value = scheduled.time || '22:00';
-    $('cfgLockerEndTime').value = scheduled.endTime || '';
-    const schedRow = $('lockerScheduledRow');
-    if(schedRow) schedRow.style.display = scheduled.enabled ? '' : 'none';
+    try { 
+      // 初始化（会自动清理残留遮罩）
+      AppLocker.init(); 
+      
+      // ——— 专注视图（上边栏第一个）锁机组 ———
+      const cfgLockerTop = $('cfgLockerTop');
+      const cfgLockerInFocusTop = $('cfgLockerInFocusTop');
+      const cfgLockerDurationTop = $('cfgLockerDurationTop');
+      const testLockerTopBtn = $('btnTestLockerTop');
+      const btnOpenLockerSettings = $('btnOpenLockerSettings');
 
-    // 锁定所有应用开关
-    const cfgAllApps = $('cfgLockerAllApps');
-    cfgAllApps.checked = AppLocker.isLockAllApps();
-    cfgAllApps.addEventListener('change', ()=>{
-      AppLocker.setLockAllApps(cfgAllApps.checked);
-      renderLockerAppList();
-      updateLockerAppsHint();
-    });
+      // 加载初始值
+      if(cfgLockerTop) cfgLockerTop.checked = AppLocker.isEnabled();
+      if(cfgLockerInFocusTop) cfgLockerInFocusTop.checked = AppLocker.isLockInFocus();
+      if(cfgLockerDurationTop) cfgLockerDurationTop.value = AppLocker.getDefaultDuration();
 
-    // 渲染应用列表
-    function renderLockerAppList(){
-      const list = $('lockerAppList');
-      if(!list) return;
-      AppLocker.refreshAppList();
-    }
-
-    // 使用事件委托处理应用列表点击
-    const lockerAppListEl = $('lockerAppList');
-    if(lockerAppListEl){
-      lockerAppListEl.addEventListener('click', (e)=>{
-        const del = e.target.closest('[data-del]');
-        if(del){
-          e.stopPropagation();
-          const id = del.dataset.del;
-          AppLocker.removeCustomApp(id);
-          renderLockerAppList();
-          return;
-        }
-        const item = e.target.closest('.locker-app-item');
-        if(!item) return;
-        const id = item.dataset.id;
-        const current = AppLocker.getLockedApps();
-        const idx = current.indexOf(id);
-        if(idx >= 0) current.splice(idx, 1);
-        else current.push(id);
-        AppLocker.setLockedApps(current);
-        renderLockerAppList();
-        updateLockerAppsHint();
-      });
-    }
-
-    function updateLockerAppsHint(){
-      const hint = $('lockerAppsHint');
-      if(!hint) return;
-      if(AppLocker.isLockAllApps()){
-        hint.textContent = I18n.t('lockAllAppsHint');
-      } else {
-        const n = AppLocker.getLockedApps().length;
-        hint.textContent = I18n.t('lockSelectedHint', {n: n});
+      // 绑定专注视图锁机开关
+      if(cfgLockerTop){
+        cfgLockerTop.addEventListener('change', ()=>{
+          AppLocker.setEnabled(cfgLockerTop.checked);
+        });
       }
-    }
+      if(cfgLockerInFocusTop){
+        cfgLockerInFocusTop.addEventListener('change', ()=>{
+          AppLocker.setLockInFocus(cfgLockerInFocusTop.checked);
+        });
+      }
+      if(cfgLockerDurationTop){
+        cfgLockerDurationTop.addEventListener('change', ()=>{
+          const v = Math.max(1, Math.min(480, +cfgLockerDurationTop.value || 25));
+          cfgLockerDurationTop.value = v;
+          AppLocker.setDefaultDuration(v);
+        });
+      }
+      if(testLockerTopBtn){
+        testLockerTopBtn.addEventListener('click', ()=>{
+          // 先确保没有残留遮罩
+          if(typeof AppLocker.cleanupStaleOverlay === 'function'){
+            AppLocker.cleanupStaleOverlay();
+          }
+          if(typeof AppLocker.testLock === 'function'){
+            AppLocker.testLock();
+          } else {
+            AppLocker.lock(1, true);
+          }
+        });
+      }
+      if(btnOpenLockerSettings){
+        btnOpenLockerSettings.addEventListener('click', ()=>{
+          // 跳转到设置视图
+          const settingsBtn = document.querySelector('.nav-item[data-view="settings"]');
+          if(settingsBtn) settingsBtn.click();
+        });
+      }
 
-    // 初始渲染
-    renderLockerAppList();
-    updateLockerAppsHint();
-
-    // 绑定开关
-    $('cfgLocker').addEventListener('change', ()=>{
-      AppLocker.setEnabled($('cfgLocker').checked);
-    });
-    $('cfgLockerInFocus').addEventListener('change', ()=>{
-      AppLocker.setLockInFocus($('cfgLockerInFocus').checked);
-    });
-    $('cfgLockerDuration').addEventListener('change', ()=>{
-      const v = Math.max(1, Math.min(480, +$('cfgLockerDuration').value || 25));
-      $('cfgLockerDuration').value = v;
-      AppLocker.setDefaultDuration(v);
-    });
-    $('cfgLockerScheduled').addEventListener('change', ()=>{
-      const en = $('cfgLockerScheduled').checked;
-      const time = $('cfgLockerTime').value || '22:00';
-      const endTime = $('cfgLockerEndTime').value || '';
-      AppLocker.setScheduled(time, endTime, en);
-      if(schedRow) schedRow.style.display = en ? '' : 'none';
-    });
-    $('cfgLockerTime').addEventListener('change', ()=>{
-      const en = $('cfgLockerScheduled').checked;
-      const time = $('cfgLockerTime').value || '22:00';
-      const endTime = $('cfgLockerEndTime').value || '';
-      AppLocker.setScheduled(time, endTime, en);
-    });
-    $('cfgLockerEndTime').addEventListener('change', ()=>{
-      const en = $('cfgLockerScheduled').checked;
-      const time = $('cfgLockerTime').value || '22:00';
-      const endTime = $('cfgLockerEndTime').value || '';
-      AppLocker.setScheduled(time, endTime, en);
-    });
-
-    // 自定义应用添加
-    const customInput = $('lockerCustomInput');
-    const btnAddCustom = $('btnAddCustomApp');
-    if(btnAddCustom){
-      btnAddCustom.addEventListener('click', ()=>{
-        const name = (customInput?.value || '').trim();
-        if(!name) return;
-        const id = 'custom_' + Date.now();
-        AppLocker.addCustomApp({ id: id, nameZh: name, nameEn: name, icon: '📱' });
-        const current = AppLocker.getLockedApps();
-        current.push(id);
-        AppLocker.setLockedApps(current);
-        if(customInput) customInput.value = '';
-        renderLockerAppList();
-        updateLockerAppsHint();
-      });
-    }
-    if(customInput){
-      customInput.addEventListener('keydown', (e)=>{
-        if(e.key === 'Enter') btnAddCustom?.click();
-      });
-    }
-
-    const btnGuide = $('btnLockerGuide');
-    if(btnGuide){
-      btnGuide.addEventListener('click', ()=>{
-        AppLocker.guideToSystemSettings();
-      });
-    }
-    const btnTest = $('btnTestLocker');
-    if(btnTest){
-      btnTest.addEventListener('click', ()=>{
-        if(typeof AppLocker.testLock === 'function'){
-          AppLocker.testLock();
-        } else {
-          AppLocker.lock(1); // 兜底
-        }
-      });
-    }
-
-    // ——— 专注视图（上边栏第一个）锁机组 ———
-    const cfgLockerTop = $('cfgLockerTop');
-    const cfgLockerInFocusTop = $('cfgLockerInFocusTop');
-    const cfgLockerDurationTop = $('cfgLockerDurationTop');
-    const testLockerTopBtn = $('btnTestLockerTop');
-    // 加载初始值
-    if(cfgLockerTop) cfgLockerTop.checked = AppLocker.isEnabled();
-    if(cfgLockerInFocusTop) cfgLockerInFocusTop.checked = AppLocker.isLockInFocus();
-    if(cfgLockerDurationTop) cfgLockerDurationTop.value = AppLocker.getDefaultDuration();
-    // 双向联动（设置界面的开关）：保持同步
-    function syncLockerToggles(){
-      const e1 = $('cfgLocker'), e2 = cfgLockerTop;
-      if(e1 && e2 && e1.checked !== e2.checked){ e2.checked = e1.checked; }
-      const e3 = $('cfgLockerInFocus'), e4 = cfgLockerInFocusTop;
-      if(e3 && e4 && e3.checked !== e4.checked){ e4.checked = e3.checked; }
-      const e5 = $('cfgLockerDuration'), e6 = cfgLockerDurationTop;
-      if(e5 && e6 && e5.value !== e6.value){ e6.value = e5.value; }
-    }
-    syncLockerToggles();
-    if(cfgLockerTop){
-      cfgLockerTop.addEventListener('change', ()=>{
-        AppLocker.setEnabled(cfgLockerTop.checked);
-        const e = $('cfgLocker'); if(e) e.checked = cfgLockerTop.checked;
-      });
-    }
-    if(cfgLockerInFocusTop){
-      cfgLockerInFocusTop.addEventListener('change', ()=>{
-        AppLocker.setLockInFocus(cfgLockerInFocusTop.checked);
-        const e = $('cfgLockerInFocus'); if(e) e.checked = cfgLockerInFocusTop.checked;
-      });
-    }
-    if(cfgLockerDurationTop){
-      cfgLockerDurationTop.addEventListener('change', ()=>{
-        const v = Math.max(1, Math.min(480, +cfgLockerDurationTop.value || 25));
-        cfgLockerDurationTop.value = v;
-        AppLocker.setDefaultDuration(v);
-        const e = $('cfgLockerDuration'); if(e) e.value = v;
-      });
-    }
-    if(testLockerTopBtn){
-      testLockerTopBtn.addEventListener('click', ()=>{
-        if(typeof AppLocker.testLock === 'function') AppLocker.testLock();
-        else AppLocker.lock(1, true);
-      });
+      // ——— 设置视图：绑定兼容旧布局的元素（如果存在）———
+      const oldCfgLocker = $('cfgLocker');
+      if(oldCfgLocker){
+        oldCfgLocker.checked = AppLocker.isEnabled();
+        oldCfgLocker.addEventListener('change', ()=>{
+          AppLocker.setEnabled(oldCfgLocker.checked);
+          if(cfgLockerTop) cfgLockerTop.checked = oldCfgLocker.checked;
+        });
+      }
+      const oldCfgLockerInFocus = $('cfgLockerInFocus');
+      if(oldCfgLockerInFocus){
+        oldCfgLockerInFocus.checked = AppLocker.isLockInFocus();
+        oldCfgLockerInFocus.addEventListener('change', ()=>{
+          AppLocker.setLockInFocus(oldCfgLockerInFocus.checked);
+          if(cfgLockerInFocusTop) cfgLockerInFocusTop.checked = oldCfgLockerInFocus.checked;
+        });
+      }
+      const oldCfgLockerDuration = $('cfgLockerDuration');
+      if(oldCfgLockerDuration){
+        oldCfgLockerDuration.value = AppLocker.getDefaultDuration();
+        oldCfgLockerDuration.addEventListener('change', ()=>{
+          const v = Math.max(1, Math.min(480, +oldCfgLockerDuration.value || 25));
+          oldCfgLockerDuration.value = v;
+          AppLocker.setDefaultDuration(v);
+          if(cfgLockerDurationTop) cfgLockerDurationTop.value = v;
+        });
+      }
+      // 旧测试按钮
+      const oldBtnTestLocker = $('btnTestLocker');
+      if(oldBtnTestLocker){
+        oldBtnTestLocker.addEventListener('click', ()=>{
+          if(typeof AppLocker.cleanupStaleOverlay === 'function'){
+            AppLocker.cleanupStaleOverlay();
+          }
+          if(typeof AppLocker.testLock === 'function') AppLocker.testLock();
+          else AppLocker.lock(1, true);
+        });
+      }
+      const oldBtnGuide = $('btnLockerGuide');
+      if(oldBtnGuide){
+        oldBtnGuide.addEventListener('click', ()=>{
+          AppLocker.guideToSystemSettings();
+        });
+      }
+    } catch(e) { 
+      console.warn('AppLocker init error', e); 
+      // 即使初始化失败，也尝试清理残留遮罩
+      try { AppLocker.cleanupStaleOverlay(); } catch(_){}
     }
   }
 
@@ -731,8 +820,11 @@
       }
       if(key==='volume'){
         $('cfgVolVal').textContent = v;
-        Sound.setVolume(v/100);
-        volSlider.value = v; $('volVal').textContent = v;
+        if(window.Sound && Sound.setVolume){
+          try { Sound.setVolume(v/100); } catch(_){}
+        }
+        if(volSlider) volSlider.value = v;
+        $('volVal').textContent = v;
       }
       if(key==='timerMode'){
         Timer.setTimerMode(v);
@@ -773,23 +865,84 @@
   });
 
   // —— 全局初始化 ——
-  Timer.setLoop(cfg.loopEnabled, cfg.rounds, cfg.longBreak);
-  Timer.setTimerMode(cfg.timerMode);
-  Timer.setPreset(cfg.focus, cfg.break);
-  $('customFocus').value = cfg.focus;
-  $('customBreak').value = cfg.break;
-  $('timerPresets').querySelectorAll('.preset').forEach(x=>{
-    x.classList.toggle('active', +x.dataset.focus===cfg.focus && +x.dataset.break===cfg.break);
-  });
-  renderPresetLabels();
-  Tasks.render();
-  if(window.Stats) Stats.render();
-  if(Tasks.getFocusing()){
-    const t = Tasks.getFocusingTask();
-    if(t){ $('timerTask').textContent = t.text; }
-  }
-  updateTimerHint();
-  updateModeUI(cfg.timerMode);
+  // 步骤1：设置循环配置
+  try {
+    Timer.setLoop(cfg.loopEnabled, cfg.rounds, cfg.longBreak);
+    console.log('[App] Step1: setLoop OK');
+  } catch(e) { console.error('[App] Step1 setLoop error:', e); }
+  
+  // 步骤2：设置计时模式
+  try {
+    Timer.setTimerMode(cfg.timerMode);
+    console.log('[App] Step2: setTimerMode OK, mode=' + cfg.timerMode);
+  } catch(e) { console.error('[App] Step2 setTimerMode error:', e); }
+  
+  // 步骤3：设置预设时间
+  try {
+    Timer.setPreset(cfg.focus, cfg.break);
+    console.log('[App] Step3: setPreset OK');
+  } catch(e) { console.error('[App] Step3 setPreset error:', e); }
+  
+  // 步骤4：同步自定义输入
+  try {
+    const customFocus = $('customFocus');
+    const customBreak = $('customBreak');
+    if(customFocus) customFocus.value = cfg.focus;
+    if(customBreak) customBreak.value = cfg.break;
+    console.log('[App] Step4: sync custom inputs OK');
+  } catch(e) { console.error('[App] Step4 sync error:', e); }
+  
+  // 步骤5：更新预设按钮的active状态
+  try {
+    const presetsEl = $('timerPresets');
+    if(presetsEl){
+      presetsEl.querySelectorAll('.preset').forEach(x=>{
+        x.classList.toggle('active', +x.dataset.focus===cfg.focus && +x.dataset.break===cfg.break);
+      });
+    }
+    console.log('[App] Step5: update presets OK');
+  } catch(e) { console.error('[App] Step5 presets error:', e); }
+  
+  // 步骤6：渲染预设标签
+  try {
+    renderPresetLabels();
+    console.log('[App] Step6: renderPresetLabels OK');
+  } catch(e) { console.error('[App] Step6 renderPresetLabels error:', e); }
+  
+  // 步骤7：应用模式UI
+  try {
+    updateModeUI(cfg.timerMode);
+    console.log('[App] Step7: updateModeUI OK');
+  } catch(e) { console.error('[App] Step7 updateModeUI error:', e); }
+  
+  // 步骤8：渲染任务列表
+  try {
+    if(window.Tasks) Tasks.render();
+    console.log('[App] Step8: renderTasks OK');
+  } catch(e) { console.error('[App] Step8 tasks error:', e); }
+  
+  // 步骤9：渲染统计
+  try {
+    if(window.Stats) Stats.render();
+    console.log('[App] Step9: renderStats OK');
+  } catch(e) { console.error('[App] Step9 stats error:', e); }
+  
+  // 步骤10：恢复专注中的任务
+  try {
+    if(window.Tasks && Tasks.getFocusing()){
+      const t = Tasks.getFocusingTask();
+      if(t){ $('timerTask').textContent = t.text; }
+    }
+    console.log('[App] Step10: restore task OK');
+  } catch(e) { console.error('[App] Step10 task error:', e); }
+  
+  // 步骤11：更新计时器提示
+  try {
+    updateTimerHint();
+    console.log('[App] Step11: updateTimerHint OK');
+  } catch(e) { console.error('[App] Step11 hint error:', e); }
+  
+  console.log('[App] All init steps completed');
 
   // 注册 Service Worker
   if('serviceWorker' in navigator){

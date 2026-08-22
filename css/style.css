@@ -1013,7 +1013,7 @@ input[type=number],input[type=text],input[type=time],textarea{border-radius:12px
 
 /* ===== 启动加载界面 Splash ===== */
 .app-splash{
-  position:fixed;inset:0;z-index:99999;
+  position:fixed;inset:0;z-index:99998;
   display:flex;align-items:center;justify-content:center;
   background:var(--bg);background-image:var(--bg-grad);
   transition:opacity .5s ease, visibility .5s ease;
@@ -1041,11 +1041,76 @@ input[type=number],input[type=text],input[type=time],textarea{border-radius:12px
 }
 @keyframes spin{to{transform:rotate(360deg);}}
 
-/* ===== 正常模式：隐藏休息设置 ===== */
-[data-timer-mode="normal"] .timer-presets .preset-break,
-[data-timer-mode="normal"] .timer-custom .custom-sep,
+/* ===== 正常模式：彻底隐藏休息设置 ===== */
+/* 隐藏预设按钮中的休息部分（文字和元素） */
+[data-timer-mode="normal"] .timer-presets .preset-break{
+  display:none !important;
+  visibility:hidden !important;
+  height:0 !important;
+  max-height:0 !important;
+  overflow:hidden !important;
+  padding:0 !important;
+  margin:0 !important;
+  line-height:0 !important;
+  width:0 !important;
+  max-width:0 !important;
+  opacity:0 !important;
+  pointer-events:none !important;
+}
+
+/* 隐藏自定义中的休息输入、分隔符、单位 */
 [data-timer-mode="normal"] .timer-custom #customBreak,
-[data-timer-mode="normal"] .timer-custom .custom-unit.break-unit{display:none !important;}
+[data-timer-mode="normal"] .timer-custom .custom-sep,
+[data-timer-mode="normal"] .timer-custom .custom-unit.break-unit{
+  display:none !important;
+  visibility:hidden !important;
+  height:0 !important;
+  max-height:0 !important;
+  overflow:hidden !important;
+  padding:0 !important;
+  margin:0 !important;
+  width:0 !important;
+  opacity:0 !important;
+  pointer-events:none !important;
+}
+
+/* 隐藏设置中的番茄循环和休息时长行 */
+[data-timer-mode="normal"] #pomodoroSettings,
+[data-timer-mode="normal"] #cfgBreakRow{
+  display:none !important;
+  visibility:hidden !important;
+  height:0 !important;
+  overflow:hidden !important;
+}
+
+/* 正常模式下番茄循环设置组完全隐藏 */
+[data-timer-mode="normal"] #pomodoroSettings h3,
+[data-timer-mode="normal"] #pomodoroSettings .setting-row{
+  display:none !important;
+  visibility:hidden !important;
+  height:0 !important;
+  max-height:0 !important;
+  overflow:hidden !important;
+  padding:0 !important;
+  margin:0 !important;
+}
+
+/* 确保预设按钮在正常模式下保持单行显示 */
+[data-timer-mode="normal"] .timer-presets .preset{
+  display:inline-flex !important;
+  flex-direction:row !important;
+  align-items:center !important;
+}
+
+/* 正常模式：自定义区域只显示专注输入和应用按钮 */
+[data-timer-mode="normal"] .timer-custom{
+  gap:4px !important;
+}
+
+/* 正常模式：预设按钮文字样式简化 */
+[data-timer-mode="normal"] .timer-presets .preset-focus{
+  display:inline !important;
+}
 
 /* ===== 专注视图 · 锁机设置组 ===== */
 .focus-locker-group{

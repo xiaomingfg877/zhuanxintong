@@ -39,6 +39,7 @@
   let cfg = loadCfg();
   let activeLock = false;       // 是否正在锁定中
   let lockEndTime = 0;          // 锁定结束时间戳
+  let lockDurationMin = 0;      // 原始锁定时长（分钟），用于惩罚计算
   let onLockChange = null;
   let timerInterval = null;
   let scheduledInterval = null;
@@ -125,13 +126,53 @@
   /* —— 创建/更新锁机遮罩 DOM —— */
   let lockOverlay = null;
   function ensureOverlay(){
-    if(lockOverlay) return lockOverlay;
+    if(lockOverlay){
+      // 如果overlay存在但不在body中（可能被移除了），重新创建
+      if(!document.body.contains(lockOverlay)){
+        lockOverlay = null; // 重置以便重新创建
+      } else {
+        return lockOverlay;
+      }
+    }
     lockOverlay = document.createElement('div');
     lockOverlay.className = 'app-locker-overlay';
     lockOverlay.id = 'appLockerOverlay';
+    // 确保在最顶层
+    lockOverlay.style.zIndex = '999999';
+    // 默认隐藏
+    lockOverlay.style.display = 'none';
+    lockOverlay.style.visibility = 'hidden';
     renderOverlayContent();
     document.body.appendChild(lockOverlay);
     return lockOverlay;
+  }
+  
+  /* —— 清理可能残留的遮罩（初始化时调用）—— */
+  function cleanupStaleOverlay(){
+    // 检查是否有残留的遮罩元素（来自上次未正常关闭的锁机）
+    const stale = document.getElementById('appLockerOverlay');
+    if(stale){
+      stale.classList.remove('active');
+      stale.style.display = 'none';
+      stale.style.visibility = 'hidden';
+      stale.style.pointerEvents = 'none';
+      stale.style.touchAction = '';
+      // 不删除元素本身（复用），但确保它不阻挡交互
+      if(lockOverlay === stale){
+        activeLock = false;
+        lockEndTime = 0;
+        lockDurationMin = 0;
+      }
+    }
+    // 清理body上的locker-active类
+    document.body.classList.remove('locker-active');
+    // 恢复触摸事件
+    blockTouchEvents(false);
+    lockPageScroll(false);
+    // 恢复全屏
+    try { exitFullScreen(); } catch(_){}
+    // 恢复返回按钮
+    restoreBack();
   }
 
   function renderOverlayContent(){
@@ -184,8 +225,8 @@
           try{
             if(window.Garden && typeof Garden.penalize === 'function'){
               // 依据锁定时长，每 25 分钟惩罚 1 朵花，至少 1 朵
-              const lockedMinutes = Math.max(1, Math.floor((lockEndTime ? (lockEndTime - (lockEndTime - 0/*placeholder*/)) : cfg.defaultDuration*60000) / 60000));
-              const penaltyBase = Math.max(1, Math.ceil(cfg.defaultDuration / 25));
+              const dur = lockDurationMin || cfg.defaultDuration;
+              const penaltyBase = Math.max(1, Math.ceil(dur / 25));
               penaltyResult = Garden.penalize(penaltyBase) || penaltyResult;
             }
           }catch(e){ console.warn('[Locker] garden penalty error', e); }
@@ -290,29 +331,56 @@
   }
 
   /* —— 启动锁机 ——
-     force=true: 忽略 cfg.enabled 检查（用于测试锁机）
+     force=true: 忽略 cfg.enabled 检查（用于测试锁机），且允许 <1 分钟的时长
   */
   function lock(durationMin, force){
     if(!force && !cfg.enabled) return false;
     if(activeLock) return false;
-    const minutes = Math.max(1, Math.min(480, durationMin || cfg.defaultDuration));
+    let minutes;
+    if(force){
+      // 测试模式：允许秒级时长
+      minutes = Math.max(1/60, Math.min(480, durationMin || (cfg.defaultDuration/60)));
+    } else {
+      minutes = Math.max(1, Math.min(480, durationMin || cfg.defaultDuration));
+    }
+    lockDurationMin = minutes;
     lockEndTime = Date.now() + minutes * 60 * 1000;
     activeLock = true;
+    
+    // 确保遮罩存在
     ensureOverlay();
-    renderOverlayContent(); // 重新渲染以更新i18n和应用列表
     if(!lockOverlay){
       activeLock = false; lockEndTime = 0; return false;
     }
+    
+    // 重新渲染内容（更新i18n和应用列表）
+    renderOverlayContent();
+    
+    // 强制移除 splash 层（如果还存在）
+    const splash = document.getElementById('appSplash');
+    if(splash){ splash.classList.add('hide'); splash.remove(); }
+    
+    // 显示遮罩 - 确保在最顶层
     lockOverlay.classList.add('active');
-    // 阻止触摸事件穿透（关键：确保事件不被下层吸收）
+    lockOverlay.style.display = 'flex';
+    lockOverlay.style.visibility = 'visible';
     lockOverlay.style.pointerEvents = 'auto';
     lockOverlay.style.touchAction = 'none';
+    lockOverlay.style.zIndex = '999999';
+    
+    // 确保遮罩在body最后（最顶层）
+    if(lockOverlay.parentNode && lockOverlay.parentNode.lastChild !== lockOverlay){
+      lockOverlay.parentNode.appendChild(lockOverlay);
+    }
+    
     // iOS: 阻止所有触摸/手势事件
     blockTouchEvents(true);
     // 进入全屏（如果支持）
     requestFullScreen();
     // 锁定页面滚动
     lockPageScroll(true);
+    // 添加 body 类以便 CSS 辅助
+    document.body.classList.add('locker-active');
     // 启动计时器
     startTimer();
     // 阻止返回按钮
@@ -327,20 +395,32 @@
     if(!activeLock) return;
     activeLock = false;
     lockEndTime = 0;
-    if(lockOverlay){
-      lockOverlay.classList.remove('active');
-      lockOverlay.style.pointerEvents = '';
-      lockOverlay.style.touchAction = '';
-    }
+    lockDurationMin = 0;
+    
+    // 停止计时器
     if(timerInterval){
       clearInterval(timerInterval);
       timerInterval = null;
     }
-    // 恢复触摸/手势
+    
+    // 恢复触摸/手势（在隐藏遮罩之前）
     blockTouchEvents(false);
     lockPageScroll(false);
     exitFullScreen();
     restoreBack();
+    
+    // 清理 body 类
+    document.body.classList.remove('locker-active');
+    
+    // 隐藏遮罩（确保完全不可见且不阻挡交互）
+    if(lockOverlay){
+      lockOverlay.classList.remove('active');
+      lockOverlay.style.display = 'none';
+      lockOverlay.style.visibility = 'hidden';
+      lockOverlay.style.pointerEvents = 'none';
+      lockOverlay.style.touchAction = '';
+    }
+    
     if(onLockChange) onLockChange(false, 0, forced);
   }
 
@@ -764,12 +844,24 @@
   /* —— 公共 API —— */
   window.AppLocker = {
     init(){
+      // 首先清理可能残留的锁机遮罩（防止上次未正常关闭导致按钮无法点击）
+      cleanupStaleOverlay();
+      
       // 监听专注开始/结束
       if(window.Timer){
         Timer.onStateChange((running, mode, minutes)=>{
           if(cfg.enabled && cfg.lockInFocus && mode === 'focus'){
             if(running && !activeLock){
-              lock(minutes || cfg.defaultDuration);
+              // 使用 lockWithConfirm：弹窗提示用户即将进入锁机模式
+              const dur = minutes || cfg.defaultDuration;
+              lockWithConfirm(dur, false).then(confirmed => {
+                if(!confirmed){
+                  // 用户取消了锁机确认 → 暂停计时器
+                  if(window.Timer && Timer.isRunning()){
+                    Timer.pause();
+                  }
+                }
+              });
             } else if(!running && activeLock && mode !== 'break'){
               unlock(false);
             }
@@ -920,6 +1012,9 @@
         }
       }
     },
-    platform
+    platform,
+    cleanupStaleOverlay,
+    // 强制清理（用于调试或紧急情况）
+    forceCleanup: cleanupStaleOverlay
   };
 })();

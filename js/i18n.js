@@ -27,6 +27,8 @@
       exitImmersive: '退出沉浸',
       // presets
       presetFocus: '专注{n} · 休息{m}',
+      presetFocusOnly: '专注{n}',
+      moreSettings: '更多设置',
       custom: '自定义',
       apply: '应用',
       minute: '分',
@@ -244,6 +246,8 @@
       immersiveFocus: 'Focusing',
       exitImmersive: 'Exit Immersive',
       presetFocus: 'Focus {n} · Break {m}',
+      presetFocusOnly: 'Focus {n}',
+      moreSettings: 'More Settings',
       custom: 'Custom',
       apply: 'Apply',
       minute: 'min',
