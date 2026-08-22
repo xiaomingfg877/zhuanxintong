@@ -15,15 +15,22 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install dependencies
         run: npm install
 
       - name: Generate app icon from SVG
         run: node generate-icon.js
+
+      - name: Ensure iOS project exists
+        run: |
+          if [ ! -f "ios/App/App.xcworkspace" ]; then
+            echo "Initializing iOS project..."
+            npx cap add ios
+          fi
 
       - name: Sync Web Files
         run: npx cap sync ios
@@ -50,22 +57,22 @@ jobs:
         run: |
           echo "=== Searching for App.app ==="
           APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "App.app" -path "*/Debug-iphoneos/*" 2>/dev/null | head -1)
-          
+
           if [ -z "$APP_PATH" ]; then
             echo "Not found in DerivedData, trying other locations..."
             APP_PATH=$(find / -name "App.app" -path "*/Debug*" -maxdepth 8 2>/dev/null | head -1)
           fi
-          
+
           if [ -z "$APP_PATH" ]; then
             echo "ERROR: Could not find App.app"
             echo "=== Searching broadly ==="
             find ~/Library/Developer/Xcode -name "*.app" 2>/dev/null | head -20
             exit 1
           fi
-          
+
           echo "Found App.app at: $APP_PATH"
           APP_DIR=$(dirname "$APP_PATH")
-          
+
           mkdir -p Payload
           cp -r "$APP_PATH" Payload/
           zip -r zhuanxintong.ipa Payload/
@@ -88,20 +95,18 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: 'platform-tools platforms;android-33 build-tools;33.0.2'
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
 
       - name: Install dependencies
         run: npm install
@@ -111,16 +116,21 @@ jobs:
 
       - name: Sync www directory
         run: |
-          # 确保 www 目录是最新
           cp -f index.html www/index.html
           cp -f css/style.css www/css/style.css
-          cp -f js/*.js www/js/
 
-      - name: Add Android platform
+      - name: Initialize Android project
         run: |
-          if [ ! -d "android" ]; then
+          # Remove incomplete android directory if it lacks gradlew
+          if [ ! -f "android/gradlew" ]; then
+            echo "Android project incomplete, removing and re-initializing..."
+            rm -rf android
             npx cap add android
+          else
+            echo "Android project already initialized."
           fi
+
+          # Sync web assets to Android
           npx cap sync android
           npx cap copy android
 
@@ -130,19 +140,20 @@ jobs:
 
       - name: Build Debug APK
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon -Pandroid.useAndroidX=true
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Find and Upload APK
         run: |
           echo "=== Searching for APK ==="
           APK_PATH=$(find android -name "*.apk" -type f 2>/dev/null | head -1)
-          
+
           if [ -z "$APK_PATH" ]; then
             echo "ERROR: Could not find APK"
+            echo "=== Searching all apk files ==="
             find android -name "*.apk" 2>/dev/null
             exit 1
           fi
-          
+
           echo "Found APK at: $APK_PATH"
           cp "$APK_PATH" zhuanxintong.apk
           ls -la zhuanxintong.apk

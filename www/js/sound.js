@@ -1,6 +1,7 @@
-/* ===== 专心通 / Focus Master · 白噪音引擎 v5
+/* ===== 专心通 / Focus Master · 白噪音引擎 v7
    完全使用 Web Audio API 程序化生成声音，无外部音频文件。
-   v5 修复：彻底移除损坏的 base64 WAV，使用纯合成方式生成 6 种自然声。
+   v7 修复：iOS Safari 核心兼容性 - 同步创建/恢复 AudioContext，
+   不等待 Promise，确保在用户手势调用栈内完成所有音频操作。
 */
 (function(){
   'use strict';
@@ -26,54 +27,74 @@
   // —— Web Audio 核心 ——
   let ctx = null;
   let master = null;
+  let compressor = null;
   let volume = 0.6;
-  let current = null;       // 当前播放的声音 id
+  let current = null;
   let onStateChangeCb = null;
   let unlocked = false;
 
-  // 每个声音的节点链
-  let activeNodes = {}; // { soundId: { source, gain, filter, ... } }
-
-  // 缓存的白噪声 buffer（复用以节省内存）
+  let activeNodes = {};
   let noiseBuffer = null;
 
   function ensureCtx(){
     if(ctx) return ctx;
     const AC = window.AudioContext || window.webkitAudioContext;
-    if(!AC){ console.warn('Web Audio not supported'); return null; }
-    ctx = new AC();
-    master = ctx.createGain();
-    master.gain.value = volume;
-    // 连接压缩器防止削波
-    const compressor = ctx.createDynamicsCompressor();
-    compressor.threshold.value = -12;
-    compressor.knee.value = 24;
-    compressor.ratio.value = 4;
-    compressor.attack.value = 0.003;
-    compressor.release.value = 0.25;
-    master.connect(compressor);
-    compressor.connect(ctx.destination);
+    if(!AC){ console.warn('[Sound] Web Audio not supported'); return null; }
+    try {
+      ctx = new AC();
+      master = ctx.createGain();
+      master.gain.value = volume;
+      compressor = ctx.createDynamicsCompressor();
+      compressor.threshold.value = -12;
+      compressor.knee.value = 24;
+      compressor.ratio.value = 4;
+      compressor.attack.value = 0.003;
+      compressor.release.value = 0.25;
+      master.connect(compressor);
+      compressor.connect(ctx.destination);
+      console.log('[Sound] AudioContext created, state=' + ctx.state);
+    } catch(e) {
+      console.error('[Sound] Failed to create AudioContext:', e);
+      return null;
+    }
     return ctx;
+  }
+
+  // 同步恢复 AudioContext - 关键：必须在用户手势同步栈内完成
+  function syncResume(){
+    const ac = ensureCtx();
+    if(!ac) return null;
+    if(ac.state === 'running'){
+      unlocked = true;
+      return ac;
+    }
+    // 同步调用 resume() - 即使返回 Promise 也不等待
+    try {
+      ac.resume();
+      // 立即标记为 unlocked - 在大多数浏览器中这已经足够
+      // iOS Safari 中，resume() 会在当前事件循环中生效
+      unlocked = true;
+    } catch(e) {
+      console.warn('[Sound] resume error:', e);
+    }
+    return ac;
   }
 
   function getNoiseBuffer(){
     if(noiseBuffer) return noiseBuffer;
     const ac = ensureCtx(); if(!ac) return null;
-    const len = ac.sampleRate * 2; // 2 秒循环
+    const len = ac.sampleRate * 2;
     noiseBuffer = ac.createBuffer(1, len, ac.sampleRate);
     const data = noiseBuffer.getChannelData(0);
-    // 白噪声 + 轻微低频调制让它更像自然声音
     let lastOut = 0;
     for(let i = 0; i < len; i++){
       const white = Math.random() * 2 - 1;
-      // 简单低通滤波
       lastOut = (lastOut + (0.02 * white)) / 1.02;
       data[i] = lastOut * 5;
     }
     return noiseBuffer;
   }
 
-  // —— 声音合成：每种声音有独特的信号链 ——
   function createSoundNode(soundId){
     const ac = ensureCtx(); if(!ac) return null;
     const buf = getNoiseBuffer(); if(!buf) return null;
@@ -85,17 +106,14 @@
     const gain = ac.createGain();
     gain.gain.value = 0;
 
-    // 根据声音类型设置滤波和调制
     const filter = ac.createBiquadFilter();
     let extraNodes = [];
 
     switch(soundId){
       case 'rain':
-        // 雨声：高频白噪声 + 轻微低频
         filter.type = 'highpass';
         filter.frequency.value = 800;
         filter.Q.value = 0.7;
-        // 添加一个 delay+feedback 模拟雨声回响
         const rainDelay = ac.createDelay(2.0);
         rainDelay.delayTime.value = 0.08;
         const rainFb = ac.createGain();
@@ -109,14 +127,12 @@
         break;
 
       case 'wave':
-        // 海浪：低频噪声 + LFO 调制音量模拟潮起潮落
         filter.type = 'lowpass';
         filter.frequency.value = 600;
         filter.Q.value = 1.2;
-        // LFO 调制音量
         const waveLfo = ac.createOscillator();
         waveLfo.type = 'sine';
-        waveLfo.frequency.value = 0.08; // 很慢的起伏
+        waveLfo.frequency.value = 0.08;
         const waveLfoGain = ac.createGain();
         waveLfoGain.gain.value = 0.45;
         waveLfo.connect(waveLfoGain);
@@ -128,13 +144,11 @@
         break;
 
       case 'forest':
-        // 森林：带通滤波 + 随机"鸟鸣"（短暂正弦脉冲）
         filter.type = 'bandpass';
         filter.frequency.value = 2000;
         filter.Q.value = 0.8;
         src.connect(filter);
         filter.connect(gain);
-        // 定时生成鸟鸣
         const birdInterval = setInterval(()=>{
           if(!ctx || ctx !== ac) return;
           if(Math.random() < 0.35){
@@ -158,13 +172,11 @@
         break;
 
       case 'fire':
-        // 篝火：带通 + 随机"劈啪"声
         filter.type = 'lowpass';
         filter.frequency.value = 1200;
         filter.Q.value = 1.0;
         src.connect(filter);
         filter.connect(gain);
-        // 定时生成劈啪声
         const fireInterval = setInterval(()=>{
           if(!ctx || ctx !== ac) return;
           if(Math.random() < 0.5){
@@ -190,7 +202,6 @@
         break;
 
       case 'wind':
-        // 风声：低通 + 高通 + 缓慢 LFO 调制
         filter.type = 'lowpass';
         filter.frequency.value = 400;
         filter.Q.value = 0.6;
@@ -201,7 +212,6 @@
         windLfoGain.gain.value = 0.4;
         windLfo.connect(windLfoGain);
         windLfoGain.connect(gain.gain);
-        // 风的方向变化：调制 filter 频率
         const windFilterLfo = ac.createOscillator();
         windFilterLfo.type = 'sine';
         windFilterLfo.frequency.value = 0.1;
@@ -218,18 +228,24 @@
 
       case 'noise':
       default:
-        // 纯白噪声
         filter.type = 'allpass';
         src.connect(filter);
         filter.connect(gain);
         break;
     }
 
-    // 初始静音
-    gain.gain.setValueAtTime(0, ac.currentTime);
-    gain.gain.linearRampToValueAtTime(volume * 0.4, ac.currentTime + 0.3);
+    // 初始静音，然后渐入
+    const now = ac.currentTime;
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(volume * 0.4, now + 0.3);
 
-    src.start();
+    try {
+      src.start(0);
+    } catch(e) {
+      try { src.start(); } catch(e2) {
+        console.error('[Sound] src.start() failed:', e2);
+      }
+    }
 
     return { src, gain, filter, extraNodes };
   }
@@ -240,9 +256,11 @@
     const ac = ensureCtx();
     if(!ac){ delete activeNodes[soundId]; return; }
     const now = ac.currentTime;
-    nodes.gain.gain.cancelScheduledValues(now);
-    nodes.gain.gain.setValueAtTime(nodes.gain.gain.value, now);
-    nodes.gain.gain.linearRampToValueAtTime(0, now + 0.15);
+    try {
+      nodes.gain.gain.cancelScheduledValues(now);
+      nodes.gain.gain.setValueAtTime(nodes.gain.gain.value, now);
+      nodes.gain.gain.linearRampToValueAtTime(0, now + 0.15);
+    } catch(_) {}
     setTimeout(()=>{
       try { nodes.src.stop(); } catch(_){}
       if(nodes.extraNodes){
@@ -262,21 +280,26 @@
   }
 
   // —— 公共 API ——
+  // 关键：toggle 必须完全同步执行，不能等待任何 Promise
+  // 否则 iOS Safari 会拒绝播放音频
   function toggle(id){
-    const ac = ensureCtx();
+    // 1. 同步创建/恢复 AudioContext
+    const ac = syncResume();
     if(!ac) return;
-    if(ac.state === 'suspended'){
-      ac.resume().catch(()=>{});
-    }
+
+    // 2. 同步创建声音节点并启动
     if(current === id){
-      // 停止当前
       stopSound(id);
       current = null;
       if(onStateChangeCb) onStateChangeCb(null);
     } else {
-      // 停止其他
       if(current) stopSound(current);
-      activeNodes[id] = createSoundNode(id);
+      const nodes = createSoundNode(id);
+      if(!nodes){
+        console.warn('[Sound] Failed to create sound node for:', id);
+        return;
+      }
+      activeNodes[id] = nodes;
       current = id;
       if(onStateChangeCb) onStateChangeCb(id);
     }
@@ -288,21 +311,28 @@
     volume = Math.max(0, Math.min(1, v));
     const ac = ensureCtx();
     if(master && ac){
-      master.gain.setTargetAtTime(volume, ac.currentTime, 0.05);
+      try {
+        master.gain.setTargetAtTime(volume, ac.currentTime, 0.05);
+      } catch(_) {
+        master.gain.value = volume;
+      }
     }
-    // 更新正在播放的声音增益
     Object.values(activeNodes).forEach(n => {
       const ac2 = ensureCtx(); if(!ac2) return;
-      n.gain.gain.setTargetAtTime(volume * 0.4, ac2.currentTime, 0.05);
+      try {
+        n.gain.gain.setTargetAtTime(volume * 0.4, ac2.currentTime, 0.05);
+      } catch(_) {
+        n.gain.gain.value = volume * 0.4;
+      }
     });
   }
 
   function chime(){
-    const ac = ensureCtx();
+    // 同步恢复
+    const ac = syncResume();
     if(!ac) return;
-    if(ac.state === 'suspended') ac.resume().catch(()=>{});
     const now = ac.currentTime;
-    const notes = [880, 1318.5, 1760]; // A5, E6, A6
+    const notes = [880, 1318.5, 1760];
     notes.forEach((freq, i) => {
       const osc = ac.createOscillator();
       const g = ac.createGain();
@@ -321,29 +351,21 @@
 
   function onStateChange(cb){ onStateChangeCb = cb; }
 
-  function unlockAudio(){
-    const ac = ensureCtx();
-    if(!ac) return;
-    if(ac.state === 'suspended'){
-      ac.resume().then(()=>{ unlocked = true; }).catch(()=>{});
-    } else {
-      unlocked = true;
-    }
-  }
-
   function forceResume(){
     const ac = ensureCtx();
     if(!ac) return;
     if(ac.state === 'suspended'){
-      ac.resume().catch(()=>{});
+      try { ac.resume(); } catch(_) {}
     }
-    // 如果有正在播放的声音，重新启动
     if(current && !activeNodes[current]){
       activeNodes[current] = createSoundNode(current);
     }
   }
 
-  // 暴露到全局
+  function unlockAudio(){
+    return syncResume();
+  }
+
   window.Sound = {
     defs: SOUND_DEFS,
     icons: ICONS,
@@ -357,37 +379,30 @@
     stopAll,
   };
 
-  // 自动尝试初始化（等待第一次用户交互后恢复 AudioContext）
-  function tryInit(){
-    ensureCtx();
-    // 预热 AudioContext（某些浏览器需要用户手势）
-    const ac2 = ensureCtx();
-    if(ac2 && ac2.state === 'suspended'){
-      // 等下次用户交互时恢复
-      const resume = ()=>{
-        if(ac2.state === 'suspended') ac2.resume().catch(()=>{});
-        document.removeEventListener('touchstart', resume, true);
-        document.removeEventListener('click', resume, true);
-        document.removeEventListener('keydown', resume, true);
-      };
-      document.addEventListener('touchstart', resume, { once: true, passive: true });
-      document.addEventListener('click', resume, { once: true });
-      document.addEventListener('keydown', resume, { once: true });
-    }
+  // —— 初始化：注册手势监听以预热 AudioContext ——
+  function setupGestureListeners(){
+    const handler = () => {
+      syncResume();
+      document.removeEventListener('touchstart', handler, { capture: true });
+      document.removeEventListener('click', handler, { capture: true });
+      document.removeEventListener('keydown', handler, { capture: true });
+      document.removeEventListener('keicydown', handler, { capture: true });
+    };
+    document.addEventListener('touchstart', handler, { once: true, passive: true, capture: true });
+    document.addEventListener('click', handler, { once: true, capture: true });
+    document.addEventListener('keydown', handler, { once: true, capture: true });
   }
 
-  // 页面加载后尝试初始化
-  if(document.readyState === 'complete'){
-    tryInit();
-  } else {
-    window.addEventListener('load', tryInit, { once: true });
-  }
+  setupGestureListeners();
 
-  // 页面可见性变化时恢复
   document.addEventListener('visibilitychange', ()=>{
     if(document.visibilityState === 'visible'){
       forceResume();
     }
+  });
+
+  document.addEventListener('pageshow', ()=>{
+    forceResume();
   });
 
 })();
